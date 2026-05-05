@@ -53,6 +53,8 @@ export default function ProductForm({ productId, onSuccess, onCancel, stockOnly 
   const [formState, setFormState] = useState<ProductFormState>(initialFormState);
   const [variantIdMap, setVariantIdMap] = useState<Record<string, number>>({});
   const [originalVariantKeys, setOriginalVariantKeys] = useState<Set<string>>(new Set());
+  // Variant IDs that have no image in the DB — backfilled on next save
+  const [variantsWithoutMedia, setVariantsWithoutMedia] = useState<Set<number>>(new Set());
 
   // Product image state
   const [productImageFile, setProductImageFile] = useState<File | null>(null);
@@ -94,6 +96,7 @@ export default function ProductForm({ productId, onSuccess, onCancel, stockOnly 
             const matrix: VariantMatrix = {};
             const idMap: Record<string, number> = {};
             const colorImagesMap = new Map<string, string | null>();
+            const noMediaIds = new Set<number>();
 
             const variants = "productVariants" in product
               ? (product as unknown as { productVariants: Array<{
@@ -126,7 +129,14 @@ export default function ProductForm({ productId, onSuccess, onCancel, stockOnly 
               if (!colorImagesMap.has(colorName) && v.media && v.media.length > 0) {
                 colorImagesMap.set(colorName, v.media[0].url);
               }
+
+              // Track variants with no images so they get backfilled on save
+              if (!v.media || v.media.length === 0) {
+                noMediaIds.add(v.id);
+              }
             }
+
+            setVariantsWithoutMedia(noMediaIds);
 
             const selectedColors = Array.from(colorsMap.values());
             const selectedSizes = Array.from(sizesSet);
@@ -462,14 +472,28 @@ export default function ProductForm({ productId, onSuccess, onCancel, stockOnly 
 
           const colorImage = colorImages.find((ci) => ci.color === color.name);
           // Only include file in UPDATE if the admin explicitly uploaded a new one (not pre-fetched)
-          const files: File[] = (colorImage?.file && !colorImage.isPrefetched) ? [colorImage.file] : [];
+          let files: File[] = (colorImage?.file && !colorImage.isPrefetched) ? [colorImage.file] : [];
 
           if (isEditMode && originalVariantKeys.has(key) && variantIdMap[key]) {
+            const variantId = variantIdMap[key];
+
+            // Backfill image for variants that currently have none in the DB
+            if (files.length === 0 && variantsWithoutMedia.has(variantId) && colorImage?.previewUrl) {
+              try {
+                const resp = await fetch(`/api/proxy-image?url=${encodeURIComponent(colorImage.previewUrl)}`);
+                const blob = await resp.blob();
+                files = [new File([blob], `${color.name}.jpg`, { type: blob.type || "image/jpeg" })];
+                console.log("[ProductForm] Backfilling image for variant", variantId);
+              } catch (err) {
+                console.error("[ProductForm] Failed to fetch proxy image for backfill:", err);
+              }
+            }
+
             // --- UPDATE existing variant ---
             console.log("[ProductForm] Updating variant:", key);
             updatePromises.push(
               productVariantService.updateProductVariant(
-                variantIdMap[key],
+                variantId,
                 {
                   variantName: name,
                   price: cell.price,
@@ -495,6 +519,9 @@ export default function ProductForm({ productId, onSuccess, onCancel, stockOnly 
                 variantFiles = [new File([blob], `${color.name}.jpg`, { type: blob.type || "image/jpeg" })];
               } catch (err) {
                 console.error("[ProductForm] Failed to fetch image via proxy for new variant:", err);
+                toast.error(`Không thể tải ảnh cho màu ${color.label}. Vui lòng thử lại.`);
+                setLoading(false);
+                return;
               }
             }
             const now = new Date().toISOString();
@@ -555,6 +582,8 @@ export default function ProductForm({ productId, onSuccess, onCancel, stockOnly 
       });
       setVariantIdMap(newIdMap);
       setOriginalVariantKeys(newOriginalKeys);
+      // All missing images have been backfilled — reset tracker
+      setVariantsWithoutMedia(new Set());
 
       console.log("[ProductForm] All operations complete");
       if (failedCreates.length > 0) {
