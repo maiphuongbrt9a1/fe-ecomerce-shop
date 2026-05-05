@@ -50,13 +50,13 @@ export default function ProductDetailClient({
     // Product main image first
     images.push(productImageUrl || PLACEHOLDER_IMAGE);
 
-    // One image per unique color (pick first matching variant)
+    // One image per unique color (pick first variant that has an image)
     const seenColors = new Set<number>();
     for (const v of variantsWithMedia) {
       if (seenColors.has(v.colorId)) continue;
-      seenColors.add(v.colorId);
       const url = v.media?.find((m) => m.type === "IMAGE")?.url;
       if (url) {
+        seenColors.add(v.colorId);
         indexMap.set(v.colorId, images.length);
         images.push(url);
       }
