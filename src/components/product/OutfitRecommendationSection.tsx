@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
@@ -37,6 +37,17 @@ export default function OutfitRecommendationSection({ variantId }: Props) {
   const [loading, setLoading] = useState(true);
   const [addingVariantId, setAddingVariantId] = useState<number | null>(null);
   const [addingAll, setAddingAll] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [cardHeight, setCardHeight] = useState(0);
+
+  useEffect(() => {
+    if (!cardRef.current) return;
+    const observer = new ResizeObserver(([entry]) => {
+      setCardHeight(entry.contentRect.height);
+    });
+    observer.observe(cardRef.current);
+    return () => observer.disconnect();
+  }, [items]);
 
   useEffect(() => {
     let cancelled = false;
@@ -177,8 +188,8 @@ export default function OutfitRecommendationSection({ variantId }: Props) {
     <section className="mt-12">
       <h2 className="text-xl font-bold mb-6 uppercase tracking-wide">Gợi ý phối đồ</h2>
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-        {items.map((item) => (
-          <div key={item.variant.id} className="flex flex-col">
+        {items.map((item, index) => (
+          <div key={item.variant.id} ref={index === 0 ? cardRef : undefined} className="flex flex-col">
             <ProductCard
               id={String(item.productId)}
               name={item.productName}
@@ -203,7 +214,7 @@ export default function OutfitRecommendationSection({ variantId }: Props) {
         ))}
 
         {/* Add all to cart card — outline style, end of list, matches full card+button height */}
-        <div className="flex flex-col">
+        <div className="flex flex-col" style={cardHeight > 0 ? { minHeight: cardHeight } : undefined}>
           <button
             onClick={handleAddAllToCart}
             disabled={addingAll || items.every((i) => i.productStock === 0)}
