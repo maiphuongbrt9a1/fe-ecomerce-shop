@@ -381,6 +381,7 @@ export default function OrderDetailSheet({
                           src={thumb}
                           alt={item.productVariant.variantName}
                           className="w-20 h-20 rounded-lg object-cover border shrink-0"
+                          onError={(e) => { (e.target as HTMLImageElement).src = "/no-image.jpg"; }}
                         />
                       ) : (
                         <div className="w-20 h-20 rounded-lg bg-gray-100 shrink-0 flex items-center justify-center">

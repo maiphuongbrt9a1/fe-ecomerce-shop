@@ -383,7 +383,7 @@ function ProductsListContent({ stockOnlyEdit = false }: ProductsListClientProps)
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 border border-gray-200 bg-gray-100 flex items-center justify-center flex-shrink-0 overflow-hidden rounded-md">
                           {imgUrl ? (
-                            <img src={imgUrl} alt={product.name} className="w-full h-full object-cover" />
+                            <img src={imgUrl} alt={product.name} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).src = "/no-image.jpg"; }} />
                           ) : (
                             <div className="w-full h-full bg-gray-200" />
                           )}

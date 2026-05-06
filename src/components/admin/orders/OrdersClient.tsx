@@ -231,7 +231,7 @@ export default function OrdersClient({ readonly = false }: OrdersClientProps) {
                   <div className="text-gray-400 text-xs">{vi.index + 1}</div>
                   <div className="flex items-center gap-2 overflow-hidden">
                     {thumbUrl ? (
-                      <img src={thumbUrl} alt={productName} className="w-8 h-8 rounded object-cover flex-shrink-0" />
+                      <img src={thumbUrl} alt={productName} className="w-8 h-8 rounded object-cover flex-shrink-0" onError={(e) => { (e.target as HTMLImageElement).src = "/no-image.jpg"; }} />
                     ) : (
                       <div className="w-8 h-8 rounded bg-gray-100 flex-shrink-0" />
                     )}
