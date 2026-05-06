@@ -218,7 +218,7 @@ export default function AddressModal({ isOpen, onClose, onSuccess, editAddress }
     }
 
     // Validate required fields
-    if (!formData.street || !formData.ward || !formData.district || !formData.province) {
+    if (!formData.street || !formData.ward || !formData.district || !formData.province || !formData.zipCode || !formData.country) {
       setError("Vui lòng điền đầy đủ thông tin địa chỉ");
       return;
     }
@@ -423,25 +423,26 @@ export default function AddressModal({ isOpen, onClose, onSuccess, editAddress }
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1">
-                Mã bưu điện
+                Mã bưu điện <span className="text-red-500">*</span>
               </label>
               <Input
                 type="text"
                 value={formData.zipCode}
                 onChange={(e) => handleChange("zipCode", e.target.value)}
                 placeholder="Nhập mã bưu điện"
+                required
               />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">
-                Quốc gia
+                Quốc gia <span className="text-red-500">*</span>
               </label>
               <Input
                 type="text"
-                className="bg-gray-50"
                 value={formData.country}
                 onChange={(e) => handleChange("country", e.target.value)}
-                readOnly
+                placeholder="Nhập quốc gia"
+                required
               />
             </div>
           </div>
