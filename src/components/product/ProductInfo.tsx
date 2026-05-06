@@ -441,15 +441,11 @@ export default function ProductInfo({
 
             {/* Action buttons */}
             <div className="grid grid-cols-2 gap-3 text-sm">
-                <Button variant="outline" className="py-3 h-auto border-gray-300">
-                    <i className="fas fa-balance-scale" />
-                    So sánh
-                </Button>
                 <Button variant="outline" className="py-3 h-auto border-gray-300 cursor-pointer" onClick={handleSendToChat}>
                     <MessageSquare size={15} />
                     Gửi qua chat
                 </Button>
-                <Button variant="outline" className="col-span-2 py-3 h-auto border-gray-300 cursor-pointer" onClick={handleShare}>
+                <Button variant="outline" className="py-3 h-auto border-gray-300 cursor-pointer" onClick={handleShare}>
                     <i className="fas fa-share-alt" />
                     Chia sẻ
                 </Button>
