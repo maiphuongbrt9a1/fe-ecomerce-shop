@@ -64,11 +64,7 @@ const formatDate = (dateStr: string) => {
   return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
 };
 
-interface OrdersClientProps {
-  readonly?: boolean;
-}
-
-export default function OrdersClient({ readonly = false }: OrdersClientProps) {
+export default function OrdersClient() {
   const { data: session } = useSession();
   const accessToken = session?.user?.access_token || "";
 
@@ -282,7 +278,6 @@ export default function OrdersClient({ readonly = false }: OrdersClientProps) {
         open={!!selectedOrder}
         onClose={() => setSelectedOrder(null)}
         onOrderUpdated={handleOrderUpdated}
-        readonly={readonly}
       />
     </div>
   );

@@ -76,7 +76,6 @@ interface OrderDetailSheetProps {
   open: boolean;
   onClose: () => void;
   onOrderUpdated: (updated: OrderFullInformationEntity) => void;
-  readonly?: boolean;
 }
 
 const formatDate = (dateStr: string | null | undefined) => {
@@ -90,11 +89,12 @@ export default function OrderDetailSheet({
   open,
   onClose,
   onOrderUpdated,
-  readonly = false,
 }: OrderDetailSheetProps) {
   const { data: session } = useSession();
   const accessToken = session?.user?.access_token || "";
   const staffId = session?.user?.id ? Number(session.user.id) : 0;
+  // Return-request approval is admin-only. Order workflow steps are open to staff too.
+  const isAdmin = session?.user?.role === "ADMIN" || session?.user?.isAdmin === true;
 
   const [submitting, setSubmitting] = useState(false);
 
@@ -470,7 +470,7 @@ export default function OrderDetailSheet({
                   </div>
                 )}
 
-                {!readonly && (
+                {isAdmin && (
                   <div className="flex gap-2 pt-2 border-t">
                     {returnRequest.status === "PENDING" && (
                       <Button
@@ -527,7 +527,7 @@ export default function OrderDetailSheet({
                     <p className="text-sm text-gray-300">Chờ thanh toán</p>
                   )}
 
-                  {step1State === "active" && !readonly && (
+                  {step1State === "active" && (
                     <div className="flex flex-col gap-3">
                       <p className="text-sm text-gray-600">Chọn ca lấy hàng GHN:</p>
                       {loadingShifts ? (
@@ -562,10 +562,6 @@ export default function OrderDetailSheet({
                       </Button>
                     </div>
                   )}
-                  {step1State === "active" && readonly && (
-                    <p className="text-sm text-gray-400">Chờ xác nhận</p>
-                  )}
-
                   {step1State === "done" && (
                     <p className="text-sm text-gray-400">Đã xác nhận</p>
                   )}
@@ -581,7 +577,7 @@ export default function OrderDetailSheet({
                     <p className="text-sm text-gray-300">Chờ xác nhận bước 1</p>
                   )}
 
-                  {step2State === "action" && !readonly && (
+                  {step2State === "action" && (
                     <div className="flex flex-col gap-3">
                       <p className="text-sm text-gray-600">Đơn hàng đang chờ GHN đến lấy hàng.</p>
                       <Button
@@ -597,10 +593,6 @@ export default function OrderDetailSheet({
                       </Button>
                     </div>
                   )}
-                  {step2State === "action" && readonly && (
-                    <p className="text-sm text-gray-400">Đang chờ GHN đến lấy hàng</p>
-                  )}
-
                   {(step2State === "info" || step2State === "done") && (
                     <p className="text-sm text-gray-400">
                       {step2State === "info" ? "Đang vận chuyển" : "GHN đã lấy hàng"}
@@ -618,7 +610,7 @@ export default function OrderDetailSheet({
                     <p className="text-sm text-gray-300">Chờ GHN lấy hàng</p>
                   )}
 
-                  {step3State === "active" && !readonly && (
+                  {step3State === "active" && (
                     <div className="flex flex-col gap-3">
                       <p className="text-sm text-gray-600">Đơn hàng đang trên đường giao đến khách.</p>
                       <div className="flex gap-3">
@@ -640,10 +632,6 @@ export default function OrderDetailSheet({
                       </div>
                     </div>
                   )}
-                  {step3State === "active" && readonly && (
-                    <p className="text-sm text-gray-400">Đang giao hàng</p>
-                  )}
-
                   {step3State === "done" && (
                     <div className="flex flex-col gap-1">
                       {(order.status === "DELIVERED" || order.status === "COMPLETED") && (
@@ -677,7 +665,7 @@ export default function OrderDetailSheet({
                 )}
 
                 {/* Cancel button */}
-                {canCancel && !readonly && (
+                {canCancel && (
                   <div>
                     <Button
                       variant="destructive"
