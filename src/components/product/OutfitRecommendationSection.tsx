@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter, usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { ShoppingCart } from "lucide-react";
@@ -11,7 +11,12 @@ import { productService } from "@/services/product";
 import { colorService } from "@/services/color";
 import { cartService } from "@/services/cart";
 import { useCart } from "@/components/cart/CartContext";
-import { ApiError } from "@/utils/api-error";
+import { getOrCreateCartId } from "@/utils/cart-helpers";
+import {
+  redirectToLoginWithIntent,
+  readAuthIntent,
+  clearAuthIntent,
+} from "@/utils/auth-intent";
 import type { ProductVariantWithMediaEntity } from "@/dto/product";
 import type { ColorEntity } from "@/dto/color";
 
@@ -102,23 +107,20 @@ export default function OutfitRecommendationSection({ variantId }: Props) {
     return () => { cancelled = true; };
   }, [variantId]);
 
-  const getOrCreateCartId = async (userId: number, token: string): Promise<number> => {
-    try {
-      const cartRes = await cartService.getCartById(userId, token);
-      return cartRes.data!.id;
-    } catch (err) {
-      if (err instanceof ApiError && (err.statusCode === 404 || err.statusCode === 400)) {
-        const createRes = await cartService.createCart(userId, { userId }, token);
-        if (!createRes.data?.id) throw new Error("Không thể tạo giỏ hàng");
-        return createRes.data.id;
-      }
-      throw err;
-    }
-  };
+  const pathname = usePathname();
 
   const handleAddToCart = async (variant: ProductVariantWithMediaEntity) => {
     if (!session?.user?.id || !session?.user?.access_token) {
-      router.push("/auth/login");
+      redirectToLoginWithIntent(
+        router,
+        {
+          kind: "addToCart",
+          productId: variant.productId,
+          variantId: variant.id,
+          quantity: 1,
+        },
+        pathname || "/",
+      );
       return;
     }
 
@@ -139,35 +141,109 @@ export default function OutfitRecommendationSection({ variantId }: Props) {
     }
   };
 
+  // Parse the product id this recommendation section is anchored to from the
+  // URL (this section only renders on /product/[id]).
+  const currentProductId = (() => {
+    const m = (pathname || "").match(/\/product\/(\d+)/);
+    return m ? parseInt(m[1], 10) : null;
+  })();
+
+  const performAddAll = useCallback(
+    async (variantIds: number[], navigateToCart: boolean) => {
+      if (!session?.user?.id || !session?.user?.access_token) return;
+      if (variantIds.length === 0) return;
+      setAddingAll(true);
+      const userId = parseInt(session.user.id, 10);
+      const token = session.user.access_token;
+      try {
+        const cartId = await getOrCreateCartId(userId, token);
+        // Sequential adds: backend's AddANewCart runs a heavy interactive transaction
+        // (upsert + full cart re-read inside the same tx); parallel calls cause
+        // transaction timeouts / pool starvation and some items silently fail.
+        let added = 0;
+        for (const productVariantId of variantIds) {
+          try {
+            await cartService.createCartItem(
+              userId,
+              { cartId, productVariantId, quantity: 1 },
+              token,
+            );
+            added++;
+          } catch (err) {
+            console.error(
+              "[OutfitRecommendationSection] Failed to add variant",
+              productVariantId,
+              err,
+            );
+          }
+        }
+        await refreshCart();
+        if (added === variantIds.length) {
+          toast.success(`Đã thêm ${added} sản phẩm vào giỏ hàng`);
+        } else if (added > 0) {
+          toast.warning(
+            `Đã thêm ${added}/${variantIds.length} sản phẩm. Vui lòng thử lại với các sản phẩm còn lại.`,
+          );
+        } else {
+          toast.error("Thêm vào giỏ hàng thất bại");
+        }
+        if (navigateToCart && added > 0) router.push("/cart");
+      } catch (err) {
+        console.error("[OutfitRecommendationSection] Add all to cart failed:", err);
+        toast.error("Thêm vào giỏ hàng thất bại");
+      } finally {
+        setAddingAll(false);
+      }
+    },
+    [session, refreshCart, router],
+  );
+
   const handleAddAllToCart = async () => {
+    const inStockItems = items.filter((item) => item.productStock > 0);
+    if (inStockItems.length === 0) return;
+    const variantIds = inStockItems.map((item) => item.variant.id);
+
     if (!session?.user?.id || !session?.user?.access_token) {
-      router.push("/auth/login");
+      if (currentProductId === null) {
+        // Can't anchor replay; fall back to plain callbackUrl flow.
+        redirectToLoginWithIntent(
+          router,
+          { kind: "addToCart", productId: 0, variantId: variantIds[0], quantity: 1 },
+          pathname || "/",
+        );
+        return;
+      }
+      redirectToLoginWithIntent(
+        router,
+        {
+          kind: "addAllToCart",
+          productId: currentProductId,
+          variantIds,
+        },
+        pathname || "/",
+      );
       return;
     }
 
-    const inStockItems = items.filter((item) => item.productStock > 0);
-    if (inStockItems.length === 0) return;
-
-    setAddingAll(true);
-    const userId = parseInt(session.user.id, 10);
-    const token = session.user.access_token;
-
-    try {
-      const cartId = await getOrCreateCartId(userId, token);
-      await Promise.all(
-        inStockItems.map((item) =>
-          cartService.createCartItem(userId, { cartId, productVariantId: item.variant.id, quantity: 1 }, token)
-        )
-      );
-      await refreshCart();
-      toast.success(`Đã thêm ${inStockItems.length} sản phẩm vào giỏ hàng`);
-    } catch (err) {
-      console.error("[OutfitRecommendationSection] Add all to cart failed:", err);
-      toast.error("Thêm vào giỏ hàng thất bại");
-    } finally {
-      setAddingAll(false);
-    }
+    await performAddAll(variantIds, false);
   };
+
+  // Replay add-all intent once after login lands the user back here.
+  const replayedRef = useRef(false);
+  useEffect(() => {
+    if (replayedRef.current) return;
+    if (loading) return; // wait for `items` to load before replaying
+    if (!session?.user?.id || !session?.user?.access_token) return;
+    if (currentProductId === null) return;
+    const intent = readAuthIntent();
+    if (!intent) return;
+    if (intent.kind !== "addAllToCart") return;
+    if (intent.productId !== currentProductId) return;
+    replayedRef.current = true;
+    clearAuthIntent();
+    console.log("[OutfitRecommendationSection] Replaying addAllToCart intent:", intent);
+    void performAddAll(intent.variantIds, true);
+  }, [session, loading, currentProductId, performAddAll]);
 
   if (loading) {
     return (

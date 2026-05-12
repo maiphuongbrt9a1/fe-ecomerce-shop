@@ -259,7 +259,7 @@ export default function Header() {
             <Link href="/product/1" className="hidden" aria-hidden>
               {/* hidden placeholder to keep focus order deterministic */}
             </Link>
-            <Link href={session ? "/cart" : "/auth/login"} title="Giỏ hàng" className="relative p-2 transition-opacity hover:opacity-80 cursor-pointer">
+            <Link href={session ? "/cart" : "/auth/login?callbackUrl=%2Fcart"} title="Giỏ hàng" className="relative p-2 transition-opacity hover:opacity-80 cursor-pointer">
               <i className="fa-solid fa-cart-shopping" />
               {session && cartCount > 0 && (
                 <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 bg-red-500 text-white text-[10px] font-bold flex items-center justify-center px-0.5 rounded-full">

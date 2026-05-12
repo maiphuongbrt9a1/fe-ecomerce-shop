@@ -153,7 +153,8 @@ function CheckoutContent() {
     const loadCart = async () => {
       if (!session?.user?.id || !session?.user?.access_token) {
         console.log("[CheckoutPage] User not authenticated");
-        router.push("/auth/login");
+        const returnPath = "/checkout" + (isBuyNow ? "?buyNow=1" : "");
+        router.push(`/auth/login?callbackUrl=${encodeURIComponent(returnPath)}`);
         return;
       }
 

@@ -22,9 +22,14 @@ export async function middleware(req: Request) {
   }
 
   // Rule 2: Authenticated but visiting an auth page — redirect to dashboard
+  // For regular users, honor ?callbackUrl=/<relative-path> if present.
   if (session && isAuthPage) {
     if (isAdmin) return NextResponse.redirect(new URL("/admin", url));
     if (isOperator) return NextResponse.redirect(new URL("/staff", url));
+    const callbackUrl = url.searchParams.get("callbackUrl");
+    if (callbackUrl && callbackUrl.startsWith("/") && !callbackUrl.startsWith("//")) {
+      return NextResponse.redirect(new URL(callbackUrl, url));
+    }
     return NextResponse.redirect(new URL("/homepage", url));
   }
 

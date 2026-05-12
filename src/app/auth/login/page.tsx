@@ -2,14 +2,16 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { LoaderCircle } from "lucide-react";
-import { ChangeEvent, FormEvent, useEffect, useState } from "react";
+import { ChangeEvent, FormEvent, Suspense, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { authenticate } from "@/utils/actions";
 import ModalReactive from "@/components/auth/ModalReactive";
 import Image from "next/image";
 import { toast } from "sonner";
 import { authService } from "@/services/auth";
+import { sanitizeCallbackUrl } from "@/utils/auth-intent";
+import Link from "next/link";
 
 function Login() {
   const [user, setUser] = useState({ email: "", password: "" });
@@ -18,14 +20,17 @@ function Login() {
   const [errors, setErrors] = useState({ email: "", password: "" });
   const [showLoader, setShowLoader] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const callbackUrl = sanitizeCallbackUrl(searchParams.get("callbackUrl"));
   const { data: session, status } = useSession();
 
   useEffect(() => {
     if (status === "authenticated" && session?.user) {
       const isAdmin = session.user.role === "ADMIN" || session.user.isAdmin === true;
-      router.push(isAdmin ? "/admin" : "/homepage");
+      const dest = isAdmin ? "/admin" : (callbackUrl || "/homepage");
+      router.push(dest);
     }
-  }, [status, session, router]);
+  }, [status, session, router, callbackUrl]);
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>): void => {
     const { name, value } = e.target;
@@ -90,7 +95,7 @@ function Login() {
       }
       setShowLoader(false);
     } else {
-      window.location.href = "/";
+      window.location.href = callbackUrl || "/";
     }
   };
 
@@ -110,13 +115,15 @@ function Login() {
             <div className="flex min-h-full w-full flex-col items-center justify-center">
               {/* Logo */}
               <div className="mb-8 flex justify-center">
-                <Image
-                  src="/LOGO.svg"
-                  alt="Paplé Logo"
-                  width={150}
-                  height={60}
-                  priority
-                />
+                <Link href="/homepage" className="cursor-pointer" aria-label="Về trang chủ">
+                  <Image
+                    src="/LOGO.svg"
+                    alt="Paplé Logo"
+                    width={150}
+                    height={60}
+                    priority
+                  />
+                </Link>
               </div>
 
               <div className="flex w-full flex-col items-center justify-start">
@@ -204,4 +211,10 @@ function Login() {
   );
 }
 
-export default Login;
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <Login />
+    </Suspense>
+  );
+}

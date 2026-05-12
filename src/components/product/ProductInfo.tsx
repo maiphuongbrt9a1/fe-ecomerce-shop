@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import ColorSwatch from "./ColorSwatch";
@@ -11,9 +11,16 @@ import { useCart } from "@/components/cart/CartContext";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ApiError } from "@/utils/api-error";
 import { MessageSquare } from "lucide-react";
 import { serializeProductCard, type ProductAttachment } from "@/utils/chat-product";
+import { getOrCreateCartId } from "@/utils/cart-helpers";
+import {
+  redirectToLoginWithIntent,
+  readAuthIntent,
+  clearAuthIntent,
+  type BuyNowSnapshot,
+} from "@/utils/auth-intent";
+import { usePathname } from "next/navigation";
 
 interface ProductInfoProps {
     productId: number;
@@ -164,86 +171,168 @@ export default function ProductInfo({
     const incrementQty = () => setQuantity((q) => Math.min(q + 1, displayStock));
     const decrementQty = () => setQuantity((q) => Math.max(q - 1, 1));
 
-    const getOrCreateCartId = async (userId: number, token: string): Promise<number> => {
-        try {
-            const cartResponse = await cartService.getCartById(userId, token);
-            console.log("[ProductInfo] Using existing cart:", cartResponse.data!.id);
-            return cartResponse.data!.id;
-        } catch (err) {
-            // Backend throws 404 (NotFoundException) when no cart exists,
-            // but its own catch block re-wraps it as 400 (BadRequestException) — handle both
-            if (err instanceof ApiError && (err.statusCode === 404 || err.statusCode === 400)) {
-                console.log("[ProductInfo] No cart found, creating new cart");
-                const createCartResponse = await cartService.createCart(userId, { userId }, token);
-                if (!createCartResponse.data?.id) throw new Error("Failed to create cart");
-                console.log("[ProductInfo] Cart created:", createCartResponse.data.id);
-                return createCartResponse.data.id;
+    const pathname = usePathname();
+    const replayedRef = useRef(false);
+
+    const buildBuyNowSnapshot = useCallback(
+        (variant: ProductVariantEntity, qty: number): BuyNowSnapshot => ({
+            productVariantId: variant.id,
+            quantity: qty,
+            price: variant.price,
+            productName: variant.variantName,
+            variantSize: variant.variantSize ?? null,
+            variantColor: variant.variantColor ?? null,
+            imageUrl: null,
+        }),
+        [],
+    );
+
+    const buildChatAttachment = useCallback(
+        (variant: ProductVariantEntity | null): ProductAttachment => {
+            const variantImageUrl = variant
+                ? (variants.find((v) => v.id === variant.id) as (typeof variants[0] & { media?: { url: string }[] }) | undefined)?.media?.[0]?.url
+                : undefined;
+            return {
+                productId,
+                productName: name,
+                price: variant?.price ?? basePrice,
+                imageUrl: variantImageUrl ?? productImageUrl,
+                variantId: variant?.id,
+                variantSize: variant?.variantSize,
+                variantColor: variant?.variantColor,
+            };
+        },
+        [variants, productId, name, basePrice, productImageUrl],
+    );
+
+    const performAddToCart = useCallback(
+        async (variantId: number, qty: number, navigateToCart: boolean) => {
+            if (!session?.user?.id || !session?.user?.access_token) return;
+            setIsLoading(true);
+            const userId = parseInt(session.user.id, 10);
+            console.log("[ProductInfo] Adding to cart:", { variantId, quantity: qty, userId });
+            try {
+                const cartId = await getOrCreateCartId(userId, session.user.access_token);
+                await cartService.createCartItem(
+                    userId,
+                    { cartId, productVariantId: variantId, quantity: qty },
+                    session.user.access_token,
+                );
+                console.log("[ProductInfo] Cart item created successfully");
+                toast.success("Đã thêm vào giỏ hàng");
+                await refreshCart();
+                if (navigateToCart) router.push("/cart");
+            } catch (error) {
+                console.error("[ProductInfo] Add to cart failed:", error);
+                toast.error("Thêm vào giỏ hàng thất bại");
+            } finally {
+                setIsLoading(false);
             }
-            throw err;
-        }
-    };
+        },
+        [session, refreshCart, router],
+    );
+
+    const performBuyNow = useCallback((snapshot: BuyNowSnapshot) => {
+        console.log("[ProductInfo] Buy now:", snapshot);
+        sessionStorage.setItem("buyNowItem", JSON.stringify(snapshot));
+        router.push("/checkout?buyNow=1");
+    }, [router]);
+
+    const performSendToChat = useCallback((att: ProductAttachment) => {
+        console.log("[ProductInfo] Sending to chat:", serializeProductCard(att));
+        window.dispatchEvent(new CustomEvent("chatAttachProduct", { detail: att }));
+    }, []);
 
     const handleAddToCart = async () => {
         if (!selectedVariant) return;
         if (!session?.user?.id || !session?.user?.access_token) {
-            router.push("/auth/login");
+            redirectToLoginWithIntent(
+                router,
+                {
+                    kind: "addToCart",
+                    productId,
+                    variantId: selectedVariant.id,
+                    quantity,
+                },
+                pathname || "/",
+            );
             return;
         }
-
-        setIsLoading(true);
-        const userId = parseInt(session.user.id, 10);
-        console.log("[ProductInfo] Adding to cart:", { variantId: selectedVariant.id, quantity, userId });
-
-        try {
-            const cartId = await getOrCreateCartId(userId, session.user.access_token);
-            await cartService.createCartItem(userId, { cartId, productVariantId: selectedVariant.id, quantity }, session.user.access_token);
-            console.log("[ProductInfo] Cart item created successfully");
-            toast.success("Đã thêm vào giỏ hàng");
-            await refreshCart();
-        } catch (error) {
-            console.error("[ProductInfo] Add to cart failed:", error);
-            toast.error("Thêm vào giỏ hàng thất bại");
-        } finally {
-            setIsLoading(false);
-        }
+        await performAddToCart(selectedVariant.id, quantity, false);
     };
 
     const handleBuyNow = () => {
         if (!selectedVariant) return;
+        const snapshot = buildBuyNowSnapshot(selectedVariant, quantity);
         if (!session?.user?.id) {
-            router.push("/auth/login");
+            redirectToLoginWithIntent(
+                router,
+                {
+                    kind: "buyNow",
+                    productId,
+                    variantId: selectedVariant.id,
+                    quantity,
+                    buyNow: snapshot,
+                },
+                pathname || "/",
+            );
             return;
         }
-
-        console.log("[ProductInfo] Buy now:", { variantId: selectedVariant.id, quantity });
-        sessionStorage.setItem("buyNowItem", JSON.stringify({
-            productVariantId: selectedVariant.id,
-            quantity,
-            price: selectedVariant.price,
-            productName: selectedVariant.variantName,
-            variantSize: selectedVariant.variantSize ?? null,
-            variantColor: selectedVariant.variantColor ?? null,
-            imageUrl: null,
-        }));
-        router.push("/checkout?buyNow=1");
+        performBuyNow(snapshot);
     };
 
     const handleSendToChat = () => {
-        const variantImageUrl = selectedVariant
-            ? (variants.find((v) => v.id === selectedVariant.id) as (typeof variants[0] & { media?: { url: string }[] }) | undefined)?.media?.[0]?.url
-            : undefined;
-        const att: ProductAttachment = {
-            productId,
-            productName: name,
-            price: selectedVariant?.price ?? basePrice,
-            imageUrl: variantImageUrl ?? productImageUrl,
-            variantId: selectedVariant?.id,
-            variantSize: selectedVariant?.variantSize,
-            variantColor: selectedVariant?.variantColor,
-        };
-        console.log("[ProductInfo] Sending to chat:", serializeProductCard(att));
-        window.dispatchEvent(new CustomEvent("chatAttachProduct", { detail: att }));
+        const att = buildChatAttachment(selectedVariant);
+        if (!session?.user?.id) {
+            redirectToLoginWithIntent(
+                router,
+                {
+                    kind: "sendToChat",
+                    productId,
+                    variantId: selectedVariant?.id ?? 0,
+                    quantity,
+                    attachment: att,
+                },
+                pathname || "/",
+            );
+            return;
+        }
+        performSendToChat(att);
     };
+
+    // Replay a pending auth intent once after login lands the user back on this product.
+    useEffect(() => {
+        if (replayedRef.current) return;
+        if (!session?.user?.id || !session?.user?.access_token) return;
+        const intent = readAuthIntent();
+        if (!intent) return;
+        if (intent.productId !== productId) return;
+        // Only consume intents this component handles; leave others (e.g. addAllToCart)
+        // for OutfitRecommendationSection to pick up.
+        if (
+            intent.kind !== "addToCart" &&
+            intent.kind !== "buyNow" &&
+            intent.kind !== "sendToChat"
+        ) {
+            return;
+        }
+        replayedRef.current = true;
+        clearAuthIntent();
+        console.log("[ProductInfo] Replaying intent:", intent);
+
+        if (intent.kind === "addToCart") {
+            const variant = variants.find((v) => v.id === intent.variantId);
+            if (!variant) {
+                toast.error("Sản phẩm không còn khả dụng");
+                return;
+            }
+            void performAddToCart(intent.variantId, intent.quantity, true);
+        } else if (intent.kind === "buyNow") {
+            performBuyNow(intent.buyNow);
+        } else if (intent.kind === "sendToChat") {
+            performSendToChat(intent.attachment);
+        }
+    }, [session, productId, variants, performAddToCart, performBuyNow, performSendToChat]);
 
     const handleShare = async () => {
         try {
