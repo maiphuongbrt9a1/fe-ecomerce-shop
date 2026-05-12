@@ -13,7 +13,7 @@ interface ProductDetailClientProps {
   productId: number;
   brand: string;
   name: string;
-  rating: number;
+rating: number;
   reviewCount: number;
   basePrice: number;
   baseStock: number;

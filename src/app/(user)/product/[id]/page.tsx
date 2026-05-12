@@ -19,15 +19,15 @@ function calculateAverageRating(reviews: ReviewDto[]): number {
 }
 
 interface ProductDetailPageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 export default async function ProductDetailPage({
   params,
 }: ProductDetailPageProps) {
-  const { id } = params;
+  const { id } = await params;
 
   // Get session for access token
   const session = await auth();
