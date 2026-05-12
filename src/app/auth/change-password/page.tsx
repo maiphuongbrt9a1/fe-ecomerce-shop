@@ -8,6 +8,7 @@ import { ChangeEvent, FormEvent, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import Image from "next/image";
+import Link from "next/link";
 import { authService } from "@/services/auth";
 
 function ChangePassword() {
@@ -142,13 +143,15 @@ function ChangePassword() {
           <div className="flex min-h-full w-full flex-col items-center justify-center">
             {/* Logo */}
             <div className="mb-8 flex justify-center">
-              <Image
-                src="/LOGO.svg"
-                alt="Paplé Logo"
-                width={150}
-                height={60}
-                priority
-              />
+              <Link href="/homepage" className="cursor-pointer" aria-label="Về trang chủ">
+                <Image
+                  src="/LOGO.svg"
+                  alt="Paplé Logo"
+                  width={150}
+                  height={60}
+                  priority
+                />
+              </Link>
             </div>
 
             <div className="flex w-full flex-col items-center justify-start">

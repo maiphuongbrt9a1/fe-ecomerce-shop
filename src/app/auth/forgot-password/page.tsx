@@ -51,13 +51,15 @@ const ForgotPassword = () => {
     <div className="flex min-h-screen items-center justify-center">
       <div className="mx-3 w-full max-w-lg border border-gray-200 p-6 sm:p-10">
         <div className="mb-8 flex justify-center">
-          <Image
-            src="/LOGO.svg"
-            alt="Paplé Logo"
-            width={150}
-            height={60}
-            priority
-          />
+          <Link href="/homepage" className="cursor-pointer" aria-label="Về trang chủ">
+            <Image
+              src="/LOGO.svg"
+              alt="Paplé Logo"
+              width={150}
+              height={60}
+              priority
+            />
+          </Link>
         </div>
         <h2 className="mb-12 text-center text-2xl font-semibold text-gray-800">
           Quên mật khẩu?
