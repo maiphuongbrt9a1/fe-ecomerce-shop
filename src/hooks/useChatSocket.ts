@@ -37,7 +37,7 @@ export function useChatSocket({
   useEffect(() => {
     if (!accessToken) return;
 
-    console.log("[useChatSocket] Connecting to WS:", `${WS_BASE}/chat`);
+    // console.log("[useChatSocket] Connecting to WS:", `${WS_BASE}/chat`);
 
     const socket = io(`${WS_BASE}/chat`, {
       auth: { token: accessToken },
@@ -47,12 +47,12 @@ export function useChatSocket({
     });
 
     socket.on("connect", () => {
-      console.log("[useChatSocket] Connected:", socket.id);
+      // console.log("[useChatSocket] Connected:", socket.id);
       setConnected(true);
     });
 
     socket.on("disconnect", (reason) => {
-      console.log("[useChatSocket] Disconnected:", reason);
+      // console.log("[useChatSocket] Disconnected:", reason);
       setConnected(false);
     });
 

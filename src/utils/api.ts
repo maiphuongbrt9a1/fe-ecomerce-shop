@@ -24,7 +24,7 @@ export const sendRequest = async <T>(props: IRequest): Promise<T> => {
     url = `${url}?${queryString.stringify(queryParams)}`;
   }
 
-  console.log("Fetching URL:", url);
+  // console.log("Fetching URL:", url);
 
   const res = await fetch(url, options);
 

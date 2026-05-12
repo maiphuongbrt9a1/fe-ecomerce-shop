@@ -6,7 +6,7 @@ const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "";
 export const productVariantService = {
   async createProductVariant(data: CreateProductVariantDto, files: File[], accessToken: string): Promise<IBackendRes<ProductVariantEntity>> {
     const url = `${BACKEND_URL}/product-variants`;
-    console.log("[ProductVariantService] Creating product variant:", data);
+    // console.log("[ProductVariantService] Creating product variant:", data);
 
     const formData = new FormData();
     files.forEach((file) => {
@@ -30,7 +30,7 @@ export const productVariantService = {
       formData.append("voucherId", data.voucherId.toString());
     }
 
-    console.log("[ProductVariantService] FormData files count:", files.length);
+    // console.log("[ProductVariantService] FormData files count:", files.length);
 
     const response = await sendRequestFile<IBackendRes<ProductVariantEntity>>({
       url,
@@ -40,7 +40,7 @@ export const productVariantService = {
         Authorization: `Bearer ${accessToken}`,
       },
     });
-    console.log("[ProductVariantService] Create product variant response:", response);
+    // console.log("[ProductVariantService] Create product variant response:", response);
     return response;
   },
 
@@ -51,7 +51,7 @@ export const productVariantService = {
     accessToken: string
   ): Promise<IBackendRes<ProductVariantEntity>> {
     const url = `${BACKEND_URL}/product-variants/${id}`;
-    console.log("[ProductVariantService] Updating product variant:", { id, data });
+    // console.log("[ProductVariantService] Updating product variant:", { id, data });
 
     const formData = new FormData();
     files.forEach((file) => {
@@ -78,13 +78,13 @@ export const productVariantService = {
         Authorization: `Bearer ${accessToken}`,
       },
     });
-    console.log("[ProductVariantService] Update product variant response:", response);
+    // console.log("[ProductVariantService] Update product variant response:", response);
     return response;
   },
 
   async deleteProductVariant(id: number, accessToken: string): Promise<IBackendRes<void>> {
     const url = `${BACKEND_URL}/product-variants/${id}`;
-    console.log("[ProductVariantService] Deleting product variant:", id);
+    // console.log("[ProductVariantService] Deleting product variant:", id);
     const response = await sendRequest<IBackendRes<void>>({
       url,
       method: "DELETE",
@@ -92,13 +92,13 @@ export const productVariantService = {
         Authorization: `Bearer ${accessToken}`,
       },
     });
-    console.log("[ProductVariantService] Delete product variant response:", response);
+    // console.log("[ProductVariantService] Delete product variant response:", response);
     return response;
   },
 
   async getAllProductVariants(accessToken?: string): Promise<IBackendRes<ProductVariantEntity[]>> {
     const url = `${BACKEND_URL}/product-variants`;
-    console.log("[ProductVariantService] Fetching all product variants");
+    // console.log("[ProductVariantService] Fetching all product variants");
     const response = await sendRequest<IBackendRes<ProductVariantEntity[]>>({
       url,
       method: "GET",
@@ -106,13 +106,13 @@ export const productVariantService = {
         ? { Authorization: `Bearer ${accessToken}` }
         : undefined,
     });
-    console.log("[ProductVariantService] Product variants response:", response);
+    // console.log("[ProductVariantService] Product variants response:", response);
     return response;
   },
 
   async getProductVariantById(id: number, accessToken?: string): Promise<IBackendRes<ProductVariantEntity>> {
     const url = `${BACKEND_URL}/product-variants/${id}`;
-    console.log("[ProductVariantService] Fetching product variant:", id);
+    // console.log("[ProductVariantService] Fetching product variant:", id);
     const response = await sendRequest<IBackendRes<ProductVariantEntity>>({
       url,
       method: "GET",
@@ -120,7 +120,7 @@ export const productVariantService = {
         ? { Authorization: `Bearer ${accessToken}` }
         : undefined,
     });
-    console.log("[ProductVariantService] Product variant response:", response);
+    // console.log("[ProductVariantService] Product variant response:", response);
     return response;
   },
 };

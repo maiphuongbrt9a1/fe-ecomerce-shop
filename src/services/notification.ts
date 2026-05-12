@@ -10,14 +10,14 @@ export const notificationService = {
     perPage = 20
   ): Promise<IBackendRes<NotificationDto[]>> {
     const url = `${BACKEND_URL}/notification/me`;
-    console.log("[NotificationService] Fetching notifications:", { page, perPage });
+    // console.log("[NotificationService] Fetching notifications:", { page, perPage });
     const response = await sendRequest<IBackendRes<NotificationDto[]>>({
       url,
       method: "GET",
       queryParams: { page, perPage },
       headers: { Authorization: `Bearer ${accessToken}` },
     });
-    console.log("[NotificationService] Fetch response:", response);
+    // console.log("[NotificationService] Fetch response:", response);
     return response;
   },
 
@@ -36,13 +36,13 @@ export const notificationService = {
     notificationId: string
   ): Promise<IBackendRes<NotificationDto>> {
     const url = `${BACKEND_URL}/notification/personal/${notificationId}/read`;
-    console.log("[NotificationService] Marking as read:", notificationId);
+    // console.log("[NotificationService] Marking as read:", notificationId);
     const response = await sendRequest<IBackendRes<NotificationDto>>({
       url,
       method: "PATCH",
       headers: { Authorization: `Bearer ${accessToken}` },
     });
-    console.log("[NotificationService] Mark read response:", response);
+    // console.log("[NotificationService] Mark read response:", response);
     return response;
   },
 };

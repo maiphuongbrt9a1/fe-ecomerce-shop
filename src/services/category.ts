@@ -7,7 +7,7 @@ const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "";
 export const categoryService = {
   async getAllCategories(accessToken?: string): Promise<IBackendRes<CategoryDto[]>> {
     const url = `${BACKEND_URL}/category`;
-    console.log("[CategoryService] Fetching all categories");
+    // console.log("[CategoryService] Fetching all categories");
     const response = await sendRequest<IBackendRes<CategoryDto[]>>({
       url,
       method: "GET",
@@ -15,7 +15,7 @@ export const categoryService = {
         ? { Authorization: `Bearer ${accessToken}` }
         : undefined,
     });
-    console.log("[CategoryService] Categories response:", response);
+    // console.log("[CategoryService] Categories response:", response);
     return response;
   },
 
@@ -31,7 +31,7 @@ export const categoryService = {
 
   async getCategoryById(id: number, accessToken?: string): Promise<IBackendRes<CategoryDto>> {
     const url = `${BACKEND_URL}/category/${id}`;
-    console.log("[CategoryService] Fetching category:", id);
+    // console.log("[CategoryService] Fetching category:", id);
     const response = await sendRequest<IBackendRes<CategoryDto>>({
       url,
       method: "GET",
@@ -39,20 +39,20 @@ export const categoryService = {
         ? { Authorization: `Bearer ${accessToken}` }
         : undefined,
     });
-    console.log("[CategoryService] Category response:", response);
+    // console.log("[CategoryService] Category response:", response);
     return response;
   },
 
   async createCategory(data: CreateCategoryDto, accessToken: string): Promise<IBackendRes<CategoryDto>> {
     const url = `${BACKEND_URL}/category`;
-    console.log("[CategoryService] Creating category:", data);
+    // console.log("[CategoryService] Creating category:", data);
     const response = await sendRequest<IBackendRes<CategoryDto>>({
       url,
       method: "POST",
       body: data,
       headers: { Authorization: `Bearer ${accessToken}` },
     });
-    console.log("[CategoryService] Create category response:", response);
+    // console.log("[CategoryService] Create category response:", response);
     return response;
   },
 
@@ -62,7 +62,7 @@ export const categoryService = {
     accessToken?: string
   ): Promise<IBackendRes<ProductDto[]>> {
     const url = `${BACKEND_URL}/category/${categoryId}/products`;
-    console.log("[CategoryService] Fetching products for category:", categoryId);
+    // console.log("[CategoryService] Fetching products for category:", categoryId);
     const response = await sendRequest<IBackendRes<ProductDto[]>>({
       url,
       method: "GET",
@@ -71,7 +71,7 @@ export const categoryService = {
         ? { Authorization: `Bearer ${accessToken}` }
         : undefined,
     });
-    console.log("[CategoryService] Category products response:", response);
+    // console.log("[CategoryService] Category products response:", response);
     return response;
   },
 };

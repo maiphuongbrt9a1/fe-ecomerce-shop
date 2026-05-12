@@ -10,7 +10,7 @@ export interface UpdateReturnRequestStatusPayload {
 
 export const returnRequestService = {
   create(data: CreateReturnRequestDto, accessToken: string): Promise<IBackendRes<ReturnRequestEntity>> {
-    console.log("[ReturnRequestService] Creating return request:", data);
+    // console.log("[ReturnRequestService] Creating return request:", data);
     return sendRequest<IBackendRes<ReturnRequestEntity>>({
       url: `${BASE_URL}/return-requests`,
       method: "POST",
@@ -24,7 +24,7 @@ export const returnRequestService = {
     payload: UpdateReturnRequestStatusPayload,
     accessToken: string,
   ): Promise<IBackendRes<ReturnRequestEntity>> {
-    console.log("[ReturnRequestService] Updating status:", id, payload);
+    // console.log("[ReturnRequestService] Updating status:", id, payload);
     return sendRequest<IBackendRes<ReturnRequestEntity>>({
       url: `${BASE_URL}/return-requests/${id}`,
       method: "PATCH",

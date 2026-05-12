@@ -26,7 +26,7 @@ function cardParams(params?: DashboardCardQueryParams) {
 export const analyticsService = {
   // --- Revenue ---
   getTotalRevenue(token: string, params?: DashboardCardQueryParams) {
-    console.log("[analyticsService] getTotalRevenue Request:", params);
+    // console.log("[analyticsService] getTotalRevenue Request:", params);
     return sendRequest<IBackendRes<AnalyticsDashboardCardRevenueMetricDto>>({
       url: `${ANALYTICS}/dashboard-card/total-revenue`,
       method: "GET",
@@ -213,7 +213,7 @@ export const analyticsService = {
 
   // --- Charts ---
   getPrimaryDashboardChart(token: string, params?: DashboardCardQueryParams) {
-    console.log("[analyticsService] getPrimaryDashboardChart Request:", params);
+    // console.log("[analyticsService] getPrimaryDashboardChart Request:", params);
     return sendRequest<IBackendRes<PrimaryDashboardChartDto>>({
       url: `${ANALYTICS}/primary-dashboard/period-report-chart-data`,
       method: "GET",
@@ -225,7 +225,7 @@ export const analyticsService = {
     token: string,
     params?: DashboardCardQueryParams & { numberOfRetentionRatePeriods?: number },
   ) {
-    console.log("[analyticsService] getSecondaryDashboardChart Request:", params);
+    // console.log("[analyticsService] getSecondaryDashboardChart Request:", params);
     const q: Record<string, string | number> = { ...cardParams(params) };
     if (params?.numberOfRetentionRatePeriods)
       q.numberOfRetentionRatePeriods = params.numberOfRetentionRatePeriods;

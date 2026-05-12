@@ -17,14 +17,14 @@ export const paymentService = {
     accessToken: string
   ): Promise<IBackendRes<string>> {
     const url = `${BACKEND_URL}/payments/vnpay-payment-url`;
-    console.log("[PaymentService] Creating VNPay payment URL:", data);
+    // console.log("[PaymentService] Creating VNPay payment URL:", data);
     const response = await sendRequest<IBackendRes<string>>({
       url,
       method: "POST",
       body: data,
       headers: { Authorization: `Bearer ${accessToken}` },
     });
-    console.log("[PaymentService] VNPay payment URL response:", response);
+    // console.log("[PaymentService] VNPay payment URL response:", response);
     return response;
   },
 
@@ -37,14 +37,14 @@ export const paymentService = {
     accessToken: string
   ): Promise<IBackendRes<VNPayVerifyReturnUrlResponseDto>> {
     const url = `${BACKEND_URL}/payments/check-vnpay-return`;
-    console.log("[PaymentService] Verifying VNPay return:", data);
+    // console.log("[PaymentService] Verifying VNPay return:", data);
     const response = await sendRequest<IBackendRes<VNPayVerifyReturnUrlResponseDto>>({
       url,
       method: "POST",
       body: data,
       headers: { Authorization: `Bearer ${accessToken}` },
     });
-    console.log("[PaymentService] VNPay verify response:", response);
+    // console.log("[PaymentService] VNPay verify response:", response);
     return response;
   },
 };

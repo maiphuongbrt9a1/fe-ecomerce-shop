@@ -14,14 +14,14 @@ export const reviewService = {
     if (rating != null) queryParams.rating = rating;
 
     const url = `${BACKEND_URL}/reviews`;
-    console.log("[ReviewService] Fetching reviews:", { page, perPage, rating });
+    // console.log("[ReviewService] Fetching reviews:", { page, perPage, rating });
     const response = await sendRequest<IBackendRes<AdminReviewDto[]>>({
       url,
       method: "GET",
       queryParams,
       headers: { Authorization: `Bearer ${accessToken}` },
     });
-    console.log("[ReviewService] Fetched", response?.data?.length ?? 0, "reviews");
+    // console.log("[ReviewService] Fetched", response?.data?.length ?? 0, "reviews");
     return response;
   },
 
@@ -30,13 +30,13 @@ export const reviewService = {
     accessToken: string
   ): Promise<IBackendRes<void>> {
     const url = `${BACKEND_URL}/reviews/${reviewId}`;
-    console.log("[ReviewService] Deleting review:", reviewId);
+    // console.log("[ReviewService] Deleting review:", reviewId);
     const response = await sendRequest<IBackendRes<void>>({
       url,
       method: "DELETE",
       headers: { Authorization: `Bearer ${accessToken}` },
     });
-    console.log("[ReviewService] Delete review response:", response);
+    // console.log("[ReviewService] Delete review response:", response);
     return response;
   },
 };

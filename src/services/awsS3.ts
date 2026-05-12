@@ -19,7 +19,7 @@ export const awsS3Service = {
     const url = `${BASE_URL}/aws-s3/user/${userId}/upload-many-request-file/${requestId}`;
     const formData = new FormData();
     files.forEach((file) => formData.append("files", file));
-    console.log("[AwsS3Service] Uploading request files:", { userId, requestId, count: files.length });
+    // console.log("[AwsS3Service] Uploading request files:", { userId, requestId, count: files.length });
     return sendRequestFile<IBackendRes<S3UploadResult[]>>({
       url,
       method: "POST",

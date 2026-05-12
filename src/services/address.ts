@@ -15,14 +15,14 @@ export const addressService = {
    */
   async createAddress(data: CreateAddressDto, accessToken: string): Promise<IBackendRes<AddressDto>> {
     const url = `${BACKEND_URL}/address`;
-    console.log("[AddressService] Creating address:", data);
+    // console.log("[AddressService] Creating address:", data);
     const response = await sendRequest<IBackendRes<AddressDto>>({
       url,
       method: "POST",
       body: data,
       headers: { Authorization: `Bearer ${accessToken}` },
     });
-    console.log("[AddressService] Create address response:", response);
+    // console.log("[AddressService] Create address response:", response);
     return response;
   },
 
@@ -35,14 +35,14 @@ export const addressService = {
     accessToken: string
   ): Promise<IBackendRes<CreateAddressForOrderResponseDto>> {
     const url = `${BACKEND_URL}/address/order-address`;
-    console.log("[AddressService] Creating order address:", data);
+    // console.log("[AddressService] Creating order address:", data);
     const response = await sendRequest<IBackendRes<CreateAddressForOrderResponseDto>>({
       url,
       method: "POST",
       body: data,
       headers: { Authorization: `Bearer ${accessToken}` },
     });
-    console.log("[AddressService] Create order address response:", response);
+    // console.log("[AddressService] Create order address response:", response);
     return response;
   },
 
@@ -54,7 +54,7 @@ export const addressService = {
    */
   async getUserAddresses(userId: number, accessToken: string): Promise<IBackendRes<AddressWithMeta[]>> {
     const url = `${BACKEND_URL}/user/${userId}/address-list`;
-    console.log("[AddressService] Fetching addresses for user:", userId);
+    // console.log("[AddressService] Fetching addresses for user:", userId);
     const response = await sendRequest<IBackendRes<AddressDto[]>>({
       url,
       method: "GET",
@@ -62,7 +62,7 @@ export const addressService = {
         Authorization: `Bearer ${accessToken}`,
       },
     });
-    console.log("[AddressService] Get user addresses response:", response);
+    // console.log("[AddressService] Get user addresses response:", response);
     return response;
   },
 
@@ -74,7 +74,7 @@ export const addressService = {
    */
   async getAddressById(addressId: number, accessToken: string): Promise<IBackendRes<AddressDto>> {
     const url = `${BACKEND_URL}/address/${addressId}`;
-    console.log("[AddressService] Fetching address:", addressId);
+    // console.log("[AddressService] Fetching address:", addressId);
     const response = await sendRequest<IBackendRes<AddressDto>>({
       url,
       method: "GET",
@@ -82,7 +82,7 @@ export const addressService = {
         Authorization: `Bearer ${accessToken}`,
       },
     });
-    console.log("[AddressService] Get address response:", response);
+    // console.log("[AddressService] Get address response:", response);
     return response;
   },
 
@@ -95,7 +95,7 @@ export const addressService = {
    */
   async updateAddress(addressId: number, data: UpdateAddressDto, accessToken: string): Promise<IBackendRes<AddressDto>> {
     const url = `${BACKEND_URL}/address/${addressId}`;
-    console.log("[AddressService] Updating address:", { addressId, data });
+    // console.log("[AddressService] Updating address:", { addressId, data });
     const response = await sendRequest<IBackendRes<AddressDto>>({
       url,
       method: "PATCH",
@@ -104,7 +104,7 @@ export const addressService = {
         Authorization: `Bearer ${accessToken}`,
       },
     });
-    console.log("[AddressService] Update address response:", response);
+    // console.log("[AddressService] Update address response:", response);
     return response;
   },
 
@@ -116,7 +116,7 @@ export const addressService = {
    */
   async deleteAddress(addressId: number, accessToken: string): Promise<IBackendRes<void>> {
     const url = `${BACKEND_URL}/address/${addressId}`;
-    console.log("[AddressService] Deleting address:", addressId);
+    // console.log("[AddressService] Deleting address:", addressId);
     const response = await sendRequest<IBackendRes<void>>({
       url,
       method: "DELETE",
@@ -124,7 +124,7 @@ export const addressService = {
         Authorization: `Bearer ${accessToken}`,
       },
     });
-    console.log("[AddressService] Delete address response:", response);
+    // console.log("[AddressService] Delete address response:", response);
     return response;
   },
 };

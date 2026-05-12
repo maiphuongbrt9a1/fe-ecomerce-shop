@@ -11,74 +11,74 @@ export const voucherService = {
     if (params.isActive !== undefined) queryParams.isActive = params.isActive;
 
     const url = `${BACKEND_URL}/vouchers/search`;
-    console.log("[VoucherService] Searching vouchers:", queryParams);
+    // console.log("[VoucherService] Searching vouchers:", queryParams);
     const response = await sendRequest<IBackendRes<VoucherDto[]>>({ url, method: "GET", queryParams });
-    console.log("[VoucherService] Search response:", response);
+    // console.log("[VoucherService] Search response:", response);
     return response;
   },
 
   async getAllVouchers(page = 1, perPage = 50): Promise<IBackendRes<VoucherDto[]>> {
     const url = `${BACKEND_URL}/vouchers`;
-    console.log("[VoucherService] Fetching vouchers");
+    // console.log("[VoucherService] Fetching vouchers");
     const response = await sendRequest<IBackendRes<VoucherDto[]>>({ url, method: "GET", queryParams: { page, perPage } });
-    console.log("[VoucherService] Vouchers response:", response);
+    // console.log("[VoucherService] Vouchers response:", response);
     return response;
   },
 
   async createVoucher(data: CreateVoucherDto, accessToken: string): Promise<IBackendRes<VoucherDto>> {
     const url = `${BACKEND_URL}/vouchers`;
-    console.log("[VoucherService] Creating voucher:", data);
+    // console.log("[VoucherService] Creating voucher:", data);
     const response = await sendRequest<IBackendRes<VoucherDto>>({
       url,
       method: "POST",
       body: data,
       headers: { Authorization: `Bearer ${accessToken}` },
     });
-    console.log("[VoucherService] Create response:", response);
+    // console.log("[VoucherService] Create response:", response);
     return response;
   },
 
   async updateVoucher(id: number, data: UpdateVoucherDto, accessToken: string): Promise<IBackendRes<VoucherDto>> {
     const url = `${BACKEND_URL}/vouchers/${id}`;
-    console.log("[VoucherService] Updating voucher:", id, data);
+    // console.log("[VoucherService] Updating voucher:", id, data);
     const response = await sendRequest<IBackendRes<VoucherDto>>({
       url,
       method: "PATCH",
       body: data,
       headers: { Authorization: `Bearer ${accessToken}` },
     });
-    console.log("[VoucherService] Update response:", response);
+    // console.log("[VoucherService] Update response:", response);
     return response;
   },
 
   async deleteVoucher(id: number, accessToken: string): Promise<IBackendRes<VoucherDto>> {
     const url = `${BACKEND_URL}/vouchers/${id}`;
-    console.log("[VoucherService] Deleting voucher:", id);
+    // console.log("[VoucherService] Deleting voucher:", id);
     const response = await sendRequest<IBackendRes<VoucherDto>>({
       url,
       method: "DELETE",
       headers: { Authorization: `Bearer ${accessToken}` },
     });
-    console.log("[VoucherService] Delete response:", response);
+    // console.log("[VoucherService] Delete response:", response);
     return response;
   },
 
   async assignToCategory(categoryId: number, voucherId: number, accessToken: string): Promise<IBackendRes<unknown>> {
     const url = `${BACKEND_URL}/category/${categoryId}`;
-    console.log("[VoucherService] Assigning voucher to category:", { categoryId, voucherId });
+    // console.log("[VoucherService] Assigning voucher to category:", { categoryId, voucherId });
     const response = await sendRequest<IBackendRes<unknown>>({
       url,
       method: "PATCH",
       body: { voucherId },
       headers: { Authorization: `Bearer ${accessToken}` },
     });
-    console.log("[VoucherService] Assign to category response:", response);
+    // console.log("[VoucherService] Assign to category response:", response);
     return response;
   },
 
   async assignToProduct(productId: number, voucherId: number, accessToken: string): Promise<IBackendRes<unknown>> {
     const url = `${BACKEND_URL}/products/${productId}`;
-    console.log("[VoucherService] Assigning voucher to product:", { productId, voucherId });
+    // console.log("[VoucherService] Assigning voucher to product:", { productId, voucherId });
     const formData = new FormData();
     formData.append("voucherId", String(voucherId));
     const response = await sendRequestFile<IBackendRes<unknown>>({
@@ -87,13 +87,13 @@ export const voucherService = {
       body: formData,
       headers: { Authorization: `Bearer ${accessToken}` },
     });
-    console.log("[VoucherService] Assign to product response:", response);
+    // console.log("[VoucherService] Assign to product response:", response);
     return response;
   },
 
   async assignToVariant(variantId: number, voucherId: number, accessToken: string): Promise<IBackendRes<unknown>> {
     const url = `${BACKEND_URL}/product-variants/${variantId}`;
-    console.log("[VoucherService] Assigning voucher to variant:", { variantId, voucherId });
+    // console.log("[VoucherService] Assigning voucher to variant:", { variantId, voucherId });
     const formData = new FormData();
     formData.append("voucherId", String(voucherId));
     const response = await sendRequestFile<IBackendRes<unknown>>({
@@ -102,7 +102,7 @@ export const voucherService = {
       body: formData,
       headers: { Authorization: `Bearer ${accessToken}` },
     });
-    console.log("[VoucherService] Assign to variant response:", response);
+    // console.log("[VoucherService] Assign to variant response:", response);
     return response;
   },
 
@@ -112,28 +112,28 @@ export const voucherService = {
     perPage = 50,
   ): Promise<IBackendRes<UserVoucherDto[]>> {
     const url = `${BACKEND_URL}/user-vouchers/me`;
-    console.log("[VoucherService] Fetching my vouchers");
+    // console.log("[VoucherService] Fetching my vouchers");
     const response = await sendRequest<IBackendRes<UserVoucherDto[]>>({
       url,
       method: "GET",
       queryParams: { page, perPage },
       headers: { Authorization: `Bearer ${accessToken}` },
     });
-    console.log("[VoucherService] My vouchers response:", response);
+    // console.log("[VoucherService] My vouchers response:", response);
     return response;
   },
 
   async assignToUser(userId: number, voucherId: number, accessToken: string): Promise<IBackendRes<unknown>> {
     const url = `${BACKEND_URL}/user-vouchers`;
     const payload: CreateUserVoucherDto = { userId, voucherId, voucherStatus: "SAVED" };
-    console.log("[VoucherService] Assigning voucher to user:", payload);
+    // console.log("[VoucherService] Assigning voucher to user:", payload);
     const response = await sendRequest<IBackendRes<unknown>>({
       url,
       method: "POST",
       body: payload,
       headers: { Authorization: `Bearer ${accessToken}` },
     });
-    console.log("[VoucherService] Assign to user response:", response);
+    // console.log("[VoucherService] Assign to user response:", response);
     return response;
   },
 };

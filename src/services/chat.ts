@@ -15,7 +15,7 @@ const CHAT_BASE = "/api/proxy/chat";
 
 export const chatService = {
   getAllRooms(accessToken: string) {
-    console.log("[chatService] Request: GET /chat/rooms");
+    // console.log("[chatService] Request: GET /chat/rooms");
     return sendRequest<IBackendRes<ChatRoomDto[]>>({
       url: `${CHAT_BASE}/rooms`,
       method: "GET",
@@ -29,7 +29,7 @@ export const chatService = {
     page = 1,
     perPage = 30
   ) {
-    console.log("[chatService] Request: GET /chat/messages", { roomName, page, perPage });
+    // console.log("[chatService] Request: GET /chat/messages", { roomName, page, perPage });
     return sendRequest<IBackendRes<ChatMessageDto[]>>({
       url: `${CHAT_BASE}/messages?roomName=${encodeURIComponent(roomName)}&page=${page}&perPage=${perPage}`,
       method: "GET",
@@ -38,7 +38,7 @@ export const chatService = {
   },
 
   createPublicRoom(payload: CreateRoomDto, accessToken: string) {
-    console.log("[chatService] Request: POST /chat/public-rooms", payload);
+    // console.log("[chatService] Request: POST /chat/public-rooms", payload);
     return sendRequest<IBackendRes<ChatRoomDto>>({
       url: `${CHAT_BASE}/public-rooms`,
       method: "POST",
@@ -48,7 +48,7 @@ export const chatService = {
   },
 
   joinPublicRoom(payload: JoinRoomDto, accessToken: string) {
-    console.log("[chatService] Request: POST /chat/public-rooms/join", payload);
+    // console.log("[chatService] Request: POST /chat/public-rooms/join", payload);
     return sendRequest<IBackendRes<{ joined: boolean; roomName: string }>>({
       url: `${CHAT_BASE}/public-rooms/join`,
       method: "POST",
@@ -58,7 +58,7 @@ export const chatService = {
   },
 
   sendPublicMessage(payload: CreateMessageDto, accessToken: string) {
-    console.log("[chatService] Request: POST /chat/messages/public", payload);
+    // console.log("[chatService] Request: POST /chat/messages/public", payload);
     return sendRequest<IBackendRes<ChatMessageDto>>({
       url: `${CHAT_BASE}/messages/public`,
       method: "POST",
@@ -68,7 +68,7 @@ export const chatService = {
   },
 
   sendPrivateMessage(payload: CreatePrivateMessageDto, accessToken: string) {
-    console.log("[chatService] Request: POST /chat/messages/private", payload);
+    // console.log("[chatService] Request: POST /chat/messages/private", payload);
     return sendRequest<IBackendRes<ChatMessageDto>>({
       url: `${CHAT_BASE}/messages/private`,
       method: "POST",
@@ -78,7 +78,7 @@ export const chatService = {
   },
 
   addUserToRoom(payload: AddUserToRoomDto, accessToken: string) {
-    console.log("[chatService] Request: POST /chat/public-rooms/add-user", payload);
+    // console.log("[chatService] Request: POST /chat/public-rooms/add-user", payload);
     return sendRequest<IBackendRes<{ joined: boolean; roomName: string }>>({
       url: `${CHAT_BASE}/public-rooms/add-user`,
       method: "POST",
@@ -88,7 +88,7 @@ export const chatService = {
   },
 
   getAdminRooms(accessToken: string) {
-    console.log("[chatService] Request: GET /chat/admin/rooms");
+    // console.log("[chatService] Request: GET /chat/admin/rooms");
     return sendRequest<IBackendRes<ChatRoomDto[]>>({
       url: `${CHAT_BASE}/admin/rooms`,
       method: "GET",

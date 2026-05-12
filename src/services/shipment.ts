@@ -15,7 +15,7 @@ export const shipmentService = {
     accessToken: string
   ): Promise<IBackendRes<Record<string, PreviewPackageDetailWithChecksumDto>>> {
     const url = `${BACKEND_URL}/shipments/preview-shipping-fee-detail-and-discount-detail-and-price-detail-for-order`;
-    console.log("[ShipmentService] Previewing shipping fee:", data);
+    // console.log("[ShipmentService] Previewing shipping fee:", data);
     const response = await sendRequest<
       IBackendRes<Record<string, PreviewPackageDetailWithChecksumDto>>
     >({
@@ -24,7 +24,7 @@ export const shipmentService = {
       body: data,
       headers: { Authorization: `Bearer ${accessToken}` },
     });
-    console.log("[ShipmentService] Preview response:", response);
+    // console.log("[ShipmentService] Preview response:", response);
     return response;
   },
 
@@ -33,13 +33,13 @@ export const shipmentService = {
     accessToken: string
   ): Promise<IBackendRes<string>> {
     const url = `${BACKEND_URL}/shipments/${orderId}/ghn-tracking-url`;
-    console.log("[ShipmentService] Fetching GHN tracking URL for order:", orderId);
+    // console.log("[ShipmentService] Fetching GHN tracking URL for order:", orderId);
     const response = await sendRequest<IBackendRes<string>>({
       url,
       method: "GET",
       headers: { Authorization: `Bearer ${accessToken}` },
     });
-    console.log("[ShipmentService] GHN tracking URL response:", response);
+    // console.log("[ShipmentService] GHN tracking URL response:", response);
     return response;
   },
 };

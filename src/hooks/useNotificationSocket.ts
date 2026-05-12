@@ -32,7 +32,7 @@ export function useNotificationSocket({
   useEffect(() => {
     if (!accessToken) return;
 
-    console.log("[useNotificationSocket] Connecting to namespace: notification");
+    // console.log("[useNotificationSocket] Connecting to namespace: notification");
 
     const socket = io(`${WS_BASE}/notification`, {
       auth: { token: accessToken },
@@ -42,11 +42,11 @@ export function useNotificationSocket({
     });
 
     socket.on("connect", () => {
-      console.log("[useNotificationSocket] Connected:", socket.id);
+      // console.log("[useNotificationSocket] Connected:", socket.id);
     });
 
     socket.on("disconnect", (reason) => {
-      console.log("[useNotificationSocket] Disconnected:", reason);
+      // console.log("[useNotificationSocket] Disconnected:", reason);
     });
 
     socket.on("connect_error", (err) => {
@@ -54,7 +54,7 @@ export function useNotificationSocket({
     });
 
     socket.on("personalNotificationToClient", (payload: PersonalNotificationPayload) => {
-      console.log("[useNotificationSocket] Personal notification received:", payload);
+      // console.log("[useNotificationSocket] Personal notification received:", payload);
       const notification: NotificationDto = {
         id: `ws-personal-${Date.now()}`,
         title: payload.title,
@@ -70,7 +70,7 @@ export function useNotificationSocket({
     });
 
     socket.on("shopNotificationToClient", (payload: ShopNotificationPayload) => {
-      console.log("[useNotificationSocket] Shop notification received:", payload);
+      // console.log("[useNotificationSocket] Shop notification received:", payload);
       const notification: NotificationDto = {
         id: `ws-shop-${Date.now()}`,
         title: payload.title,

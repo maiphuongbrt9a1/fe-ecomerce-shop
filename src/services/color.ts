@@ -6,7 +6,7 @@ const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "";
 export const colorService = {
   async getAllColors(accessToken?: string): Promise<IBackendRes<ColorEntity[]>> {
     const url = `${BACKEND_URL}/color`;
-    console.log("[ColorService] Fetching all colors");
+    // console.log("[ColorService] Fetching all colors");
     const response = await sendRequest<IBackendRes<ColorEntity[]>>({
       url,
       method: "GET",
@@ -15,7 +15,7 @@ export const colorService = {
         ? { Authorization: `Bearer ${accessToken}` }
         : undefined,
     });
-    console.log("[ColorService] Colors response:", response);
+    // console.log("[ColorService] Colors response:", response);
     return response;
   },
 
@@ -24,14 +24,14 @@ export const colorService = {
     accessToken: string
   ): Promise<IBackendRes<ColorEntity>> {
     const url = `${BACKEND_URL}/color`;
-    console.log("[ColorService] Creating color:", data);
+    // console.log("[ColorService] Creating color:", data);
     const response = await sendRequest<IBackendRes<ColorEntity>>({
       url,
       method: "POST",
       body: data,
       headers: { Authorization: `Bearer ${accessToken}` },
     });
-    console.log("[ColorService] Create color response:", response);
+    // console.log("[ColorService] Create color response:", response);
     return response;
   },
 
@@ -41,14 +41,14 @@ export const colorService = {
     accessToken: string
   ): Promise<IBackendRes<ColorEntity>> {
     const url = `${BACKEND_URL}/color/${id}`;
-    console.log("[ColorService] Updating color:", { id, data });
+    // console.log("[ColorService] Updating color:", { id, data });
     const response = await sendRequest<IBackendRes<ColorEntity>>({
       url,
       method: "PATCH",
       body: data,
       headers: { Authorization: `Bearer ${accessToken}` },
     });
-    console.log("[ColorService] Update color response:", response);
+    // console.log("[ColorService] Update color response:", response);
     return response;
   },
 
@@ -57,13 +57,13 @@ export const colorService = {
     accessToken: string
   ): Promise<IBackendRes<ColorEntity>> {
     const url = `${BACKEND_URL}/color/${id}`;
-    console.log("[ColorService] Deleting color:", id);
+    // console.log("[ColorService] Deleting color:", id);
     const response = await sendRequest<IBackendRes<ColorEntity>>({
       url,
       method: "DELETE",
       headers: { Authorization: `Bearer ${accessToken}` },
     });
-    console.log("[ColorService] Delete color response:", response);
+    // console.log("[ColorService] Delete color response:", response);
     return response;
   },
 };

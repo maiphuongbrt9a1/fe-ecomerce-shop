@@ -24,14 +24,14 @@ export const orderService = {
     accessToken: string
   ): Promise<IBackendRes<OrderFullInformationEntity>> {
     const url = `${BACKEND_URL}/orders`;
-    console.log("[OrderService] Creating order:", data);
+    // console.log("[OrderService] Creating order:", data);
     const response = await sendRequest<IBackendRes<OrderFullInformationEntity>>({
       url,
       method: "POST",
       body: data,
       headers: { Authorization: `Bearer ${accessToken}` },
     });
-    console.log("[OrderService] Create order response:", response);
+    // console.log("[OrderService] Create order response:", response);
     return response;
   },
 
@@ -42,13 +42,13 @@ export const orderService = {
     perPage = 20
   ): Promise<IBackendRes<OrderFullInformationEntity[]>> {
     const url = `${BACKEND_URL}/user/${userId}/order-list?page=${page}&perPage=${perPage}`;
-    console.log("[OrderService] Fetching orders for user:", userId, { page, perPage });
+    // console.log("[OrderService] Fetching orders for user:", userId, { page, perPage });
     const response = await sendRequest<IBackendRes<OrderFullInformationEntity[]>>({
       url,
       method: "GET",
       headers: { Authorization: `Bearer ${accessToken}` },
     });
-    console.log("[OrderService] Get user orders response:", response);
+    // console.log("[OrderService] Get user orders response:", response);
     return response;
   },
 
@@ -59,13 +59,13 @@ export const orderService = {
     perPage = 20
   ): Promise<IBackendRes<OrderFullInformationEntity[]>> {
     const url = `${BACKEND_URL}/user/${userId}/confirmed-order-list?page=${page}&perPage=${perPage}`;
-    console.log("[OrderService] Fetching confirmed orders for user:", userId, { page, perPage });
+    // console.log("[OrderService] Fetching confirmed orders for user:", userId, { page, perPage });
     const response = await sendRequest<IBackendRes<OrderFullInformationEntity[]>>({
       url,
       method: "GET",
       headers: { Authorization: `Bearer ${accessToken}` },
     });
-    console.log("[OrderService] Get confirmed orders response:", response);
+    // console.log("[OrderService] Get confirmed orders response:", response);
     return response;
   },
 
@@ -76,13 +76,13 @@ export const orderService = {
     perPage = 20
   ): Promise<IBackendRes<OrderFullInformationEntity[]>> {
     const url = `${BACKEND_URL}/user/${userId}/shipped-order-list?page=${page}&perPage=${perPage}`;
-    console.log("[OrderService] Fetching shipped orders for user:", userId, { page, perPage });
+    // console.log("[OrderService] Fetching shipped orders for user:", userId, { page, perPage });
     const response = await sendRequest<IBackendRes<OrderFullInformationEntity[]>>({
       url,
       method: "GET",
       headers: { Authorization: `Bearer ${accessToken}` },
     });
-    console.log("[OrderService] Get shipped orders response:", response);
+    // console.log("[OrderService] Get shipped orders response:", response);
     return response;
   },
 
@@ -93,13 +93,13 @@ export const orderService = {
     perPage = 20
   ): Promise<IBackendRes<OrderFullInformationEntity[]>> {
     const url = `${BACKEND_URL}/user/${userId}/delivered-order-list?page=${page}&perPage=${perPage}`;
-    console.log("[OrderService] Fetching delivered orders for user:", userId, { page, perPage });
+    // console.log("[OrderService] Fetching delivered orders for user:", userId, { page, perPage });
     const response = await sendRequest<IBackendRes<OrderFullInformationEntity[]>>({
       url,
       method: "GET",
       headers: { Authorization: `Bearer ${accessToken}` },
     });
-    console.log("[OrderService] Get delivered orders response:", response);
+    // console.log("[OrderService] Get delivered orders response:", response);
     return response;
   },
 
@@ -110,13 +110,13 @@ export const orderService = {
     perPage = 20
   ): Promise<IBackendRes<OrderFullInformationEntity[]>> {
     const url = `${BACKEND_URL}/user/${userId}/completed-order-list?page=${page}&perPage=${perPage}`;
-    console.log("[OrderService] Fetching completed orders for user:", userId, { page, perPage });
+    // console.log("[OrderService] Fetching completed orders for user:", userId, { page, perPage });
     const response = await sendRequest<IBackendRes<OrderFullInformationEntity[]>>({
       url,
       method: "GET",
       headers: { Authorization: `Bearer ${accessToken}` },
     });
-    console.log("[OrderService] Get completed orders response:", response);
+    // console.log("[OrderService] Get completed orders response:", response);
     return response;
   },
 
@@ -127,13 +127,13 @@ export const orderService = {
     perPage = 20
   ): Promise<IBackendRes<OrderFullInformationEntity[]>> {
     const url = `${BACKEND_URL}/user/${userId}/cancelled-order-list?page=${page}&perPage=${perPage}`;
-    console.log("[OrderService] Fetching cancelled orders for user:", userId, { page, perPage });
+    // console.log("[OrderService] Fetching cancelled orders for user:", userId, { page, perPage });
     const response = await sendRequest<IBackendRes<OrderFullInformationEntity[]>>({
       url,
       method: "GET",
       headers: { Authorization: `Bearer ${accessToken}` },
     });
-    console.log("[OrderService] Get cancelled orders response:", response);
+    // console.log("[OrderService] Get cancelled orders response:", response);
     return response;
   },
 
@@ -144,13 +144,13 @@ export const orderService = {
     perPage = 20
   ): Promise<IBackendRes<OrderFullInformationEntity[]>> {
     const url = `${BACKEND_URL}/user/${userId}/returned-order-list?page=${page}&perPage=${perPage}`;
-    console.log("[OrderService] Fetching returned orders for user:", userId, { page, perPage });
+    // console.log("[OrderService] Fetching returned orders for user:", userId, { page, perPage });
     const response = await sendRequest<IBackendRes<OrderFullInformationEntity[]>>({
       url,
       method: "GET",
       headers: { Authorization: `Bearer ${accessToken}` },
     });
-    console.log("[OrderService] Get returned orders response:", response);
+    // console.log("[OrderService] Get returned orders response:", response);
     return response;
   },
 
@@ -159,13 +159,13 @@ export const orderService = {
     accessToken: string
   ): Promise<IBackendRes<OrderDto>> {
     const url = `${BACKEND_URL}/orders/${orderId}`;
-    console.log("[OrderService] Fetching order:", orderId);
+    // console.log("[OrderService] Fetching order:", orderId);
     const response = await sendRequest<IBackendRes<OrderDto>>({
       url,
       method: "GET",
       headers: { Authorization: `Bearer ${accessToken}` },
     });
-    console.log("[OrderService] Get order response:", response);
+    // console.log("[OrderService] Get order response:", response);
     return response;
   },
 
@@ -175,14 +175,14 @@ export const orderService = {
     accessToken: string
   ): Promise<IBackendRes<OrderDto>> {
     const url = `${BACKEND_URL}/orders/${orderId}`;
-    console.log("[OrderService] Updating order:", { orderId, data });
+    // console.log("[OrderService] Updating order:", { orderId, data });
     const response = await sendRequest<IBackendRes<OrderDto>>({
       url,
       method: "PATCH",
       body: data,
       headers: { Authorization: `Bearer ${accessToken}` },
     });
-    console.log("[OrderService] Update order response:", response);
+    // console.log("[OrderService] Update order response:", response);
     return response;
   },
 
@@ -191,14 +191,14 @@ export const orderService = {
     accessToken: string
   ): Promise<IBackendRes<OrderItemDto>> {
     const url = `${BACKEND_URL}/order-items`;
-    console.log("[OrderService] Creating order item:", data);
+    // console.log("[OrderService] Creating order item:", data);
     const response = await sendRequest<IBackendRes<OrderItemDto>>({
       url,
       method: "POST",
       body: data,
       headers: { Authorization: `Bearer ${accessToken}` },
     });
-    console.log("[OrderService] Create order item response:", response);
+    // console.log("[OrderService] Create order item response:", response);
     return response;
   },
 
@@ -208,14 +208,14 @@ export const orderService = {
     accessToken: string
   ): Promise<IBackendRes<OrderItemDto>> {
     const url = `${BACKEND_URL}/order-items/${itemId}`;
-    console.log("[OrderService] Updating order item:", { itemId, data });
+    // console.log("[OrderService] Updating order item:", { itemId, data });
     const response = await sendRequest<IBackendRes<OrderItemDto>>({
       url,
       method: "PATCH",
       body: data,
       headers: { Authorization: `Bearer ${accessToken}` },
     });
-    console.log("[OrderService] Update order item response:", response);
+    // console.log("[OrderService] Update order item response:", response);
     return response;
   },
 
@@ -224,13 +224,13 @@ export const orderService = {
     accessToken: string
   ): Promise<IBackendRes<OrderFullInformationEntity>> {
     const url = `${BACKEND_URL}/orders/${orderId}/order-detail`;
-    console.log("[OrderService] Fetching order detail:", orderId);
+    // console.log("[OrderService] Fetching order detail:", orderId);
     const response = await sendRequest<IBackendRes<OrderFullInformationEntity>>({
       url,
       method: "GET",
       headers: { Authorization: `Bearer ${accessToken}` },
     });
-    console.log("[OrderService] Order detail response:", response);
+    // console.log("[OrderService] Order detail response:", response);
     return response;
   },
 
@@ -239,13 +239,13 @@ export const orderService = {
     accessToken: string
   ): Promise<IBackendRes<OrderFullInformationEntity>> {
     const url = `${BACKEND_URL}/orders/${orderId}/cancel`;
-    console.log("[OrderService] Cancelling order:", orderId);
+    // console.log("[OrderService] Cancelling order:", orderId);
     const response = await sendRequest<IBackendRes<OrderFullInformationEntity>>({
       url,
       method: "POST",
       headers: { Authorization: `Bearer ${accessToken}` },
     });
-    console.log("[OrderService] Cancel order response:", response);
+    // console.log("[OrderService] Cancel order response:", response);
     return response;
   },
 
@@ -255,13 +255,13 @@ export const orderService = {
     accessToken: string
   ): Promise<IBackendRes<OrderFullInformationEntity[]>> {
     const url = `${BACKEND_URL}/orders/order-detail-list?page=${page}&perPage=${perPage}`;
-    console.log("[OrderService] Fetching all order details page:", page);
+    // console.log("[OrderService] Fetching all order details page:", page);
     const response = await sendRequest<IBackendRes<OrderFullInformationEntity[]>>({
       url,
       method: "GET",
       headers: { Authorization: `Bearer ${accessToken}` },
     });
-    console.log("[OrderService] All order details response:", response?.data?.length, "items");
+    // console.log("[OrderService] All order details response:", response?.data?.length, "items");
     return response;
   },
 
@@ -271,7 +271,7 @@ export const orderService = {
     accessToken: string
   ): Promise<IBackendRes<OrderFullInformationEntity[]>> {
     const url = `${BACKEND_URL}/orders/shop/confirmed-order-list?page=${page}&perPage=${perPage}`;
-    console.log("[OrderService] Fetching confirmed orders page:", page);
+    // console.log("[OrderService] Fetching confirmed orders page:", page);
     const response = await sendRequest<IBackendRes<OrderFullInformationEntity[]>>({
       url,
       method: "GET",
@@ -286,7 +286,7 @@ export const orderService = {
     accessToken: string
   ): Promise<IBackendRes<OrderFullInformationEntity[]>> {
     const url = `${BACKEND_URL}/orders/shop/waiting-for-ghn-pickup-order-list?page=${page}&perPage=${perPage}`;
-    console.log("[OrderService] Fetching waiting pickup orders page:", page);
+    // console.log("[OrderService] Fetching waiting pickup orders page:", page);
     const response = await sendRequest<IBackendRes<OrderFullInformationEntity[]>>({
       url,
       method: "GET",
@@ -301,7 +301,7 @@ export const orderService = {
     accessToken: string
   ): Promise<IBackendRes<OrderFullInformationEntity[]>> {
     const url = `${BACKEND_URL}/orders/shop/shipped-order-list?page=${page}&perPage=${perPage}`;
-    console.log("[OrderService] Fetching shipped orders page:", page);
+    // console.log("[OrderService] Fetching shipped orders page:", page);
     const response = await sendRequest<IBackendRes<OrderFullInformationEntity[]>>({
       url,
       method: "GET",
@@ -316,7 +316,7 @@ export const orderService = {
     accessToken: string
   ): Promise<IBackendRes<OrderFullInformationEntity[]>> {
     const url = `${BACKEND_URL}/orders/shop/delivered-order-list?page=${page}&perPage=${perPage}`;
-    console.log("[OrderService] Fetching delivered orders page:", page);
+    // console.log("[OrderService] Fetching delivered orders page:", page);
     const response = await sendRequest<IBackendRes<OrderFullInformationEntity[]>>({
       url,
       method: "GET",
@@ -331,7 +331,7 @@ export const orderService = {
     accessToken: string
   ): Promise<IBackendRes<OrderFullInformationEntity[]>> {
     const url = `${BACKEND_URL}/orders/shop/completed-order-list?page=${page}&perPage=${perPage}`;
-    console.log("[OrderService] Fetching completed orders page:", page);
+    // console.log("[OrderService] Fetching completed orders page:", page);
     const response = await sendRequest<IBackendRes<OrderFullInformationEntity[]>>({
       url,
       method: "GET",
@@ -346,7 +346,7 @@ export const orderService = {
     accessToken: string
   ): Promise<IBackendRes<OrderFullInformationEntity[]>> {
     const url = `${BACKEND_URL}/orders/shop/cancelled-order-list?page=${page}&perPage=${perPage}`;
-    console.log("[OrderService] Fetching cancelled orders page:", page);
+    // console.log("[OrderService] Fetching cancelled orders page:", page);
     const response = await sendRequest<IBackendRes<OrderFullInformationEntity[]>>({
       url,
       method: "GET",
@@ -359,7 +359,7 @@ export const orderService = {
     accessToken: string
   ): Promise<IBackendRes<GhnPickShift[]>> {
     const url = `${BACKEND_URL}/orders/ghn/pick-shift-list`;
-    console.log("[OrderService] Fetching GHN pick shifts");
+    // console.log("[OrderService] Fetching GHN pick shifts");
     const response = await sendRequest<IBackendRes<GhnPickShift[]>>({
       url,
       method: "GET",
@@ -374,7 +374,7 @@ export const orderService = {
     accessToken: string
   ): Promise<IBackendRes<OrderFullInformationEntity>> {
     const url = `${BACKEND_URL}/orders/${orderId}/waiting-pickup`;
-    console.log("[OrderService] Updating order to waiting-pickup:", orderId);
+    // console.log("[OrderService] Updating order to waiting-pickup:", orderId);
     const response = await sendRequest<IBackendRes<OrderFullInformationEntity>>({
       url,
       method: "PATCH",
@@ -390,7 +390,7 @@ export const orderService = {
     accessToken: string
   ): Promise<IBackendRes<OrderFullInformationEntity>> {
     const url = `${BACKEND_URL}/orders/${orderId}/shipped`;
-    console.log("[OrderService] Updating order to shipped:", orderId);
+    // console.log("[OrderService] Updating order to shipped:", orderId);
     const response = await sendRequest<IBackendRes<OrderFullInformationEntity>>({
       url,
       method: "PATCH",
@@ -406,7 +406,7 @@ export const orderService = {
     accessToken: string
   ): Promise<IBackendRes<OrderFullInformationEntity>> {
     const url = `${BACKEND_URL}/orders/${orderId}/delivered`;
-    console.log("[OrderService] Updating order to delivered:", orderId);
+    // console.log("[OrderService] Updating order to delivered:", orderId);
     const response = await sendRequest<IBackendRes<OrderFullInformationEntity>>({
       url,
       method: "PATCH",
@@ -422,7 +422,7 @@ export const orderService = {
     accessToken: string
   ): Promise<IBackendRes<OrderFullInformationEntity>> {
     const url = `${BACKEND_URL}/orders/${orderId}/delivery-failed`;
-    console.log("[OrderService] Updating order to delivery-failed:", orderId);
+    // console.log("[OrderService] Updating order to delivery-failed:", orderId);
     const response = await sendRequest<IBackendRes<OrderFullInformationEntity>>({
       url,
       method: "PATCH",
@@ -438,7 +438,7 @@ export const orderService = {
     accessToken: string
   ): Promise<IBackendRes<OrderFullInformationEntity[]>> {
     const url = `${BACKEND_URL}/orders/shop/returned-order-list?page=${page}&perPage=${perPage}`;
-    console.log("[OrderService] Fetching returned orders page:", page);
+    // console.log("[OrderService] Fetching returned orders page:", page);
     const response = await sendRequest<IBackendRes<OrderFullInformationEntity[]>>({
       url,
       method: "GET",
@@ -453,7 +453,7 @@ export const orderService = {
     accessToken: string
   ): Promise<IBackendRes<OrderFullInformationEntity[]>> {
     const url = `${BACKEND_URL}/orders/shop/pending-return-request-list?page=${page}&perPage=${perPage}`;
-    console.log("[OrderService] Fetching orders with pending return page:", page);
+    // console.log("[OrderService] Fetching orders with pending return page:", page);
     const response = await sendRequest<IBackendRes<OrderFullInformationEntity[]>>({
       url,
       method: "GET",
@@ -467,13 +467,13 @@ export const orderService = {
     accessToken: string
   ): Promise<IBackendRes<ReviewDto[]>> {
     const url = `${BACKEND_URL}/orders/${orderId}/my-reviews`;
-    console.log("[OrderService] Fetching my reviews for order:", orderId);
+    // console.log("[OrderService] Fetching my reviews for order:", orderId);
     const response = await sendRequest<IBackendRes<ReviewDto[]>>({
       url,
       method: "GET",
       headers: { Authorization: `Bearer ${accessToken}` },
     });
-    console.log("[OrderService] My reviews response:", response);
+    // console.log("[OrderService] My reviews response:", response);
     return response;
   },
 
@@ -482,13 +482,13 @@ export const orderService = {
     accessToken: string
   ): Promise<IBackendRes<OrderFullInformationEntity>> {
     const url = `${BACKEND_URL}/orders/${orderId}/user-confirm-received`;
-    console.log("[OrderService] Confirming order received:", orderId);
+    // console.log("[OrderService] Confirming order received:", orderId);
     const response = await sendRequest<IBackendRes<OrderFullInformationEntity>>({
       url,
       method: "PATCH",
       headers: { Authorization: `Bearer ${accessToken}` },
     });
-    console.log("[OrderService] Confirm received response:", response);
+    // console.log("[OrderService] Confirm received response:", response);
     return response;
   },
 
@@ -497,13 +497,13 @@ export const orderService = {
     accessToken: string
   ): Promise<IBackendRes<void>> {
     const url = `${BACKEND_URL}/order-items/${itemId}`;
-    console.log("[OrderService] Deleting order item:", itemId);
+    // console.log("[OrderService] Deleting order item:", itemId);
     const response = await sendRequest<IBackendRes<void>>({
       url,
       method: "DELETE",
       headers: { Authorization: `Bearer ${accessToken}` },
     });
-    console.log("[OrderService] Delete order item response:", response);
+    // console.log("[OrderService] Delete order item response:", response);
     return response;
   },
 };
