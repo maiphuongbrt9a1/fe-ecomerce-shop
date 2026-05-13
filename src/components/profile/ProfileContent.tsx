@@ -206,13 +206,13 @@ export default function ProfileContent() {
     return (
         <>
             {/* Sub-tabs */}
-            <div className="flex gap-0 mb-6 bg-white">
+            <div className="flex gap-0 mb-4 md:mb-6 bg-white">
                 {subTabs.map((tab) => (
                     <Button
                         key={tab}
                         variant="ghost"
                         onClick={() => setActiveSubTab(tab)}
-                        className={`flex-1 text-center text-sm h-auto p-3 ${
+                        className={`flex-1 min-w-0 text-center text-xs sm:text-sm h-auto px-2 py-3 whitespace-normal leading-tight ${
                             activeSubTab === tab
                                 ? "font-bold text-black relative after:content-[''] after:absolute after:left-0 after:right-0 after:bottom-0 after:h-[2px] after:bg-black"
                                 : "text-gray-600 hover:text-black"
@@ -222,14 +222,14 @@ export default function ProfileContent() {
                     </Button>
                 ))}
             </div>
-            <div className="bg-white px-14 py-10">            
+            <div className="bg-white px-4 py-6 sm:px-8 sm:py-8 md:px-14 md:py-10">
             {/* Content area - Hồ sơ tab */}
             {activeSubTab === "Hồ sơ" && (
                 <div className="max-w-4xl">
-                    <div className="flex items-start gap-8 divide-x">
+                    <div className="flex flex-col md:flex-row items-stretch md:items-start gap-6 md:gap-8 md:divide-x">
                         {/* Left column - Form */}
-                        <div className="flex-1 space-y-4 pr-8">
-                            <div className="grid grid-cols-[120px_1fr] items-center gap-4">
+                        <div className="flex-1 space-y-4 md:pr-8">
+                            <div className="grid grid-cols-1 md:grid-cols-[120px_1fr] items-start md:items-center gap-1 md:gap-4">
                                 <Label className="text-sm text-gray-600 font-normal">Tên người dùng</Label>
                                 <Input
                                     type="text"
@@ -241,9 +241,9 @@ export default function ProfileContent() {
                                 />
                             </div>
 
-                            <div className="grid grid-cols-[120px_1fr] items-center gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-[120px_1fr] items-start md:items-center gap-1 md:gap-4">
                                 <Label className="text-sm text-gray-600 font-normal">Họ và tên</Label>
-                                <div className="flex gap-2">
+                                <div className="flex flex-col sm:flex-row gap-2">
                                     <Input
                                         type="text"
                                         value={lastName}
@@ -258,12 +258,12 @@ export default function ProfileContent() {
                                         onChange={(e) => setFirstName(e.target.value)}
                                         placeholder="Tên"
                                         disabled={!isEditing}
-                                        className="w-28 text-sm disabled:bg-gray-50"
+                                        className="w-full sm:w-28 text-sm disabled:bg-gray-50"
                                     />
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-[120px_1fr] items-center gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-[120px_1fr] items-start md:items-center gap-1 md:gap-4">
                                 <Label className="text-sm text-gray-600 font-normal">Email</Label>
                                 <Input
                                     type="email"
@@ -273,7 +273,7 @@ export default function ProfileContent() {
                                 />
                             </div>
 
-                            <div className="grid grid-cols-[120px_1fr] items-center gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-[120px_1fr] items-start md:items-center gap-1 md:gap-4">
                                 <Label className="text-sm text-gray-600 font-normal">Số điện thoại</Label>
                                 <Input
                                     type="text"
@@ -286,7 +286,7 @@ export default function ProfileContent() {
                             </div>
 
                             {/* Gender selection */}
-                            <div className="grid grid-cols-[120px_1fr] items-center gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-[120px_1fr] items-start md:items-center gap-1 md:gap-4">
                                 <Label className="text-sm text-gray-600 font-normal">Giới tính</Label>
                                 <RadioGroup
                                     value={gender}
@@ -315,7 +315,7 @@ export default function ProfileContent() {
 
                             {/* Unsupported field (CCCD) removed per OpenAPI absence */}
 
-                            <div className="grid grid-cols-[120px_1fr] items-center gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-[120px_1fr] items-start md:items-center gap-1 md:gap-4">
                                 <div />
                                 <div className="flex flex-col gap-2">
                                     <Button
@@ -338,7 +338,7 @@ export default function ProfileContent() {
                         </div>
 
                         {/* Right column - Avatar */}
-                        <div className="flex flex-col items-center gap-4 pl-8">
+                        <div className="flex flex-col items-center gap-4 md:pl-8">
                             <div className="relative w-32 h-32 overflow-hidden bg-gray-200">
                                 <Image
                                     src={profile?.image || "https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&w=200&q=80"}
@@ -392,9 +392,9 @@ export default function ProfileContent() {
                                         key={address.id}
                                         className="border bg-white p-4"
                                     >
-                                        <div className="flex items-start justify-between">
-                                            <div className="flex-1">
-                                                <p className="font-semibold text-gray-900 mb-2">
+                                        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
+                                            <div className="flex-1 min-w-0">
+                                                <p className="font-semibold text-gray-900 mb-2 break-words">
                                                     {fullAddress}
                                                 </p>
                                                 {isDefault && (
@@ -403,8 +403,8 @@ export default function ProfileContent() {
                                                     </span>
                                                 )}
                                             </div>
-                                            
-                                            <div className="flex gap-2 ml-4">
+
+                                            <div className="flex flex-wrap gap-2 md:ml-4 md:shrink-0">
                                                 <Button
                                                     variant="outline"
                                                     onClick={() => handleDeleteAddress(address.id)}
@@ -447,7 +447,7 @@ export default function ProfileContent() {
             )}
             {activeSubTab === "Đổi mật khẩu" && (
                 <div className="max-w-md space-y-4">
-                    <div className="grid grid-cols-[140px_1fr] items-center gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-[140px_1fr] items-start md:items-center gap-1 md:gap-4">
                         <Label className="text-sm text-gray-600 font-normal">Mật khẩu mới</Label>
                         <Input
                             type="password"
@@ -457,7 +457,7 @@ export default function ProfileContent() {
                             className="text-sm"
                         />
                     </div>
-                    <div className="grid grid-cols-[140px_1fr] items-center gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-[140px_1fr] items-start md:items-center gap-1 md:gap-4">
                         <Label className="text-sm text-gray-600 font-normal">Xác nhận mật khẩu</Label>
                         <Input
                             type="password"
@@ -467,7 +467,7 @@ export default function ProfileContent() {
                             className="text-sm"
                         />
                     </div>
-                    <div className="grid grid-cols-[140px_1fr] items-center gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-[140px_1fr] items-start md:items-center gap-1 md:gap-4">
                         <div />
                         <div className="flex flex-col gap-2">
                             <Button

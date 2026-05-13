@@ -377,8 +377,8 @@ export default function OrdersContent() {
             return (
               <div key={order.id} className="border bg-white group">
                 {/* Order header */}
-                <div className="px-4 py-3 bg-gray-50 border-b flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-4 text-sm flex-wrap">
+                <div className="px-4 py-3 bg-gray-50 border-b flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                  <div className="flex items-center gap-x-4 gap-y-1 text-sm flex-wrap min-w-0">
                     <Link href={`/profile/orders/${order.id}`} className="text-gray-600 hover:underline cursor-pointer">
                       Mã đơn: <span className="font-semibold text-black">#{order.id}</span>
                     </Link>
@@ -391,7 +391,7 @@ export default function OrdersContent() {
                       </span>
                     )}
                   </div>
-                  <div className="flex flex-col items-end gap-1">
+                  <div className="flex items-center gap-2 sm:flex-col sm:items-end sm:gap-1 shrink-0">
                     <span className={`text-sm font-semibold whitespace-nowrap ${statusInfo.color}`}>
                       {statusInfo.text}
                     </span>
@@ -399,9 +399,9 @@ export default function OrdersContent() {
                       const overlay = getReturnRequestOverlay(order);
                       return overlay ? (
                         <span
-                          className={`inline-flex items-center gap-1 px-2 py-0.5 border text-[11px] font-semibold ${overlay.className}`}
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 border text-[11px] font-semibold whitespace-nowrap ${overlay.className}`}
                         >
-                          <Undo2 className="w-3 h-3" />
+                          <Undo2 className="w-3 h-3 shrink-0" />
                           {overlay.label}
                         </span>
                       ) : null;
