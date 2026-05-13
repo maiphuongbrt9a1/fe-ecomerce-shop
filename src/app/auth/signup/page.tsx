@@ -114,7 +114,7 @@ function Signup() {
 
       {/* Right Side - Signup Form */}
       <div className="flex h-full w-full items-center justify-center bg-white lg:w-1/2">
-        <div className="h-full w-full overflow-y-auto px-40 py-20">
+        <div className="h-full w-full overflow-y-auto px-6 py-10 sm:px-12 sm:py-14 md:px-20 lg:px-32 xl:px-40 xl:py-20">
         <div className="flex min-h-full w-full flex-col items-center justify-center">
           {/* Logo */}
           <div className="mb-8 flex justify-center">
