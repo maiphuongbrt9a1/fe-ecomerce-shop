@@ -431,7 +431,7 @@ function ProductsListContent({ stockOnlyEdit = false }: ProductsListClientProps)
 
       {/* Product modal */}
       <Dialog open={productModalOpen} onOpenChange={(open) => { if (!open) { setProductModalOpen(false); setEditingProductId(null); } }}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto p-0" style={{ maxWidth: "95vw", width: "1400px" }}>
+        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-2xl md:max-w-4xl lg:max-w-6xl xl:max-w-[1400px] max-h-[90vh] overflow-y-auto p-0">
           <DialogHeader className="px-6 pt-6 pb-2">
             <DialogTitle>
               {editingProductId

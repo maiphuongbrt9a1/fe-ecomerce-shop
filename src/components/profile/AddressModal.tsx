@@ -311,7 +311,7 @@ export default function AddressModal({ isOpen, onClose, onSuccess, editAddress }
           </div>
 
           {/* Location details */}
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="relative" ref={provinceDropdownRef}>
               <label className="block text-sm font-medium mb-1">
                 Tỉnh/Thành phố <span className="text-red-500">*</span>
