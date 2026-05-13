@@ -486,8 +486,8 @@ export default function ProductInfo({
             )}
 
             {/* Quantity & Add to cart */}
-            <div className="flex gap-3">
-                <div className="flex items-center border border-gray-300">
+            <div className="flex flex-wrap gap-3">
+                <div className="flex items-center border border-gray-300 shrink-0">
                     <Button
                         variant="ghost"
                         onClick={decrementQty}
@@ -513,14 +513,14 @@ export default function ProductInfo({
                 </div>
                 <Button
                     variant="outline"
-                    className="flex-1 py-3 px-6 h-auto font-semibold border-black text-black hover:bg-gray-100 cursor-pointer"
+                    className="flex-1 min-w-[140px] py-3 px-4 sm:px-6 h-auto font-semibold border-black text-black hover:bg-gray-100 cursor-pointer whitespace-nowrap"
                     disabled={!selectedVariant || displayStock === 0 || isLoading}
                     onClick={handleAddToCart}
                 >
                     {isLoading ? "Đang thêm..." : displayStock === 0 ? "Hết hàng" : "Thêm vào giỏ"}
                 </Button>
                 <Button
-                    className="flex-1 bg-black text-white py-3 px-6 h-auto font-semibold hover:bg-gray-800 cursor-pointer"
+                    className="flex-1 min-w-[140px] bg-black text-white py-3 px-4 sm:px-6 h-auto font-semibold hover:bg-gray-800 cursor-pointer whitespace-nowrap"
                     disabled={!selectedVariant || displayStock === 0 || isLoading}
                     onClick={handleBuyNow}
                 >
