@@ -532,7 +532,7 @@ function CheckoutContent() {
     return (
       <div className="min-h-screen bg-gray-50">
         <Header />
-        <div className="container mx-auto px-4 py-8 pt-32 md:pt-36">
+        <div className="container mx-auto px-4 py-8 pt-[calc(var(--header-h)_+_1.5rem)]">
           <div className="text-center text-gray-600">Đang tải...</div>
         </div>
       </div>
@@ -543,7 +543,7 @@ function CheckoutContent() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
-      <div className="container mx-auto px-4 py-8 pt-32 md:pt-36">
+      <div className="container mx-auto px-4 py-8 pt-[calc(var(--header-h)_+_1.5rem)]">
         <Link
           href="/cart"
           className="mb-4 inline-flex cursor-pointer items-center gap-1 text-sm text-gray-600 hover:text-black"

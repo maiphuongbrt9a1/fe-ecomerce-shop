@@ -11,9 +11,9 @@ export default function ProfileLayout({
     <div className="flex min-h-dvh flex-col">
       <Header />
       <ProfileDataProvider>
-        <main className="flex flex-1 gap-2 px-20 pt-32 md:pt-36">
+        <main className="flex flex-col md:flex-row flex-1 gap-2 px-3 sm:px-6 md:px-12 lg:px-20 pt-[calc(var(--header-h)_+_1.5rem)]">
           <ProfileSidebar />
-          <div className="flex-1 py-6">{children}</div>
+          <div className="flex-1 py-4 md:py-6 min-w-0">{children}</div>
         </main>
       </ProfileDataProvider>
     </div>

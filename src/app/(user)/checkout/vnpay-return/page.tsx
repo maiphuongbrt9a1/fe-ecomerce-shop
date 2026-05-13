@@ -99,7 +99,7 @@ function VNPayReturnContent() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
-      <div className="container mx-auto px-4 py-8 pt-32 md:pt-36">
+      <div className="container mx-auto px-4 py-8 pt-[calc(var(--header-h)_+_1.5rem)]">
         <div className="mx-auto max-w-lg">
           {/* Verifying */}
           {state === "verifying" && (

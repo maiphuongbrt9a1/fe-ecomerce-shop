@@ -46,6 +46,12 @@
 /* Force consistent light background across the app */
 
 :root {
+  /* Customer Navbar height — overwritten at runtime by Navbar's ResizeObserver.
+     Fallbacks here serve SSR / first paint before JS measures the real value. */
+  --header-h: 9rem; /* 144px — md+ default (utility + main, no chip wrap) */
+  /* Customer Navbar drop shadow. Smaller default for mobile; larger desktop
+     override is in the media query below. Applied to the fixed <header>. */
+  --header-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
   --radius: 0;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
@@ -78,6 +84,23 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+}
+
+/* Mobile fallback for --header-h before JS runs (chip row likely wraps).
+   The Navbar component overrides this at runtime via ResizeObserver. */
+@media (max-width: 767px) {
+  :root {
+    --header-h: 11rem; /* 176px */
+  }
+}
+
+/* Desktop override for header shadow — stronger ambient depth on larger
+   viewports where a 40px blur reads as elegant rather than overpowering. */
+@media (min-width: 768px) {
+  :root {
+    --header-shadow: 0 12px 40px rgba(0, 0, 0, 0.35),
+      inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  }
 }
 
 @layer base {

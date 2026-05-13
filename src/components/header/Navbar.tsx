@@ -2,10 +2,10 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useState, useEffect } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Menu, Search } from "lucide-react";
 import { theme } from "@/lib/theme";
 import {
   DropdownMenu,
@@ -14,6 +14,13 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { categoryService } from "@/services/category";
 import type { CategoryDto } from "@/dto/category";
 import { useNotifications } from "@/components/notification/NotificationContext";
@@ -36,6 +43,24 @@ export default function Header() {
   const { notifications, unreadCount, markRead, orderImageMap } = useNotifications();
   const { cartCount } = useCart();
   const previewNotifications = notifications.slice(0, 5);
+  const headerRef = useRef<HTMLElement>(null);
+
+  // Expose the real, current header height as a CSS var (--header-h) so any
+  // page can offset its content with `pt-[var(--header-h)]` without guessing.
+  // ResizeObserver re-fires whenever the header reflows (chip row wraps when
+  // categories load, viewport resize, etc.).
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const apply = () => {
+      const h = el.offsetHeight;
+      if (h > 0) document.documentElement.style.setProperty("--header-h", `${h}px`);
+    };
+    apply();
+    const ro = new ResizeObserver(apply);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   useEffect(() => {
     categoryService.getAllCategories().then((res) => {
@@ -70,10 +95,11 @@ export default function Header() {
 
   return (
     <header
+      ref={headerRef}
       className={`fixed top-0 left-0 right-0 w-full text-white shadow-lg z-50 transition-all duration-300 ${isVisible ? 'translate-y-0' : '-translate-y-full'}`}
       style={{
         background: theme.gradient.header,
-        boxShadow: theme.shadow.lg,
+        boxShadow: "var(--header-shadow)",
       }}
     >
       {/* Top utility bar */}
@@ -208,7 +234,91 @@ export default function Header() {
 
       {/* Main nav bar */}
       <div className="mx-auto max-w-7xl px-3 md:px-6 py-3">
-        <div className="flex items-center gap-4 md:gap-8">
+        <div className="flex items-center gap-3 md:gap-8">
+          {/* Mobile hamburger */}
+          <Sheet>
+            <SheetTrigger asChild>
+              <button
+                className="lg:hidden p-2 -ml-2 text-white hover:opacity-80 transition-opacity cursor-pointer"
+                aria-label="Mở menu"
+              >
+                <Menu size={22} />
+              </button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-[85vw] max-w-sm p-0 flex flex-col">
+              <SheetHeader className="px-4 py-3 border-b">
+                <SheetTitle>Menu</SheetTitle>
+              </SheetHeader>
+              <div className="px-4 py-3 border-b">
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const q = (e.currentTarget.elements.namedItem("q") as HTMLInputElement | null)?.value?.trim();
+                    if (q) router.push(`/search?q=${encodeURIComponent(q)}`);
+                  }}
+                  className="flex items-stretch border border-gray-300"
+                >
+                  <input
+                    name="q"
+                    placeholder="Tìm kiếm sản phẩm"
+                    className="flex-1 min-w-0 px-3 py-2 text-sm focus:outline-none"
+                    autoComplete="off"
+                  />
+                  <button
+                    type="submit"
+                    className="px-3 bg-black text-white hover:opacity-80 transition-opacity cursor-pointer"
+                    aria-label="Tìm kiếm"
+                  >
+                    <Search size={16} />
+                  </button>
+                </form>
+              </div>
+              <nav className="flex-1 overflow-y-auto px-2 py-2">
+                <Link
+                  href="/search"
+                  className="block px-3 py-2.5 text-sm font-semibold hover:bg-gray-100 transition-colors"
+                >
+                  Tất cả sản phẩm
+                </Link>
+                {categories.length > 0 && (
+                  <>
+                    <div className="px-3 pt-3 pb-1 text-xs uppercase tracking-wider text-gray-500">
+                      Danh mục
+                    </div>
+                    {categories.map((cat) => (
+                      <Link
+                        key={cat.id}
+                        href={`/search?categoryId=${cat.id}`}
+                        className="block px-3 py-2 text-sm hover:bg-gray-100 transition-colors"
+                      >
+                        {cat.name}
+                      </Link>
+                    ))}
+                  </>
+                )}
+                {!session && (
+                  <>
+                    <div className="px-3 pt-4 pb-1 text-xs uppercase tracking-wider text-gray-500">
+                      Tài khoản
+                    </div>
+                    <Link
+                      href="/auth/login"
+                      className="block px-3 py-2 text-sm hover:bg-gray-100 transition-colors"
+                    >
+                      Đăng nhập
+                    </Link>
+                    <Link
+                      href="/auth/signup"
+                      className="block px-3 py-2 text-sm hover:bg-gray-100 transition-colors"
+                    >
+                      Đăng ký
+                    </Link>
+                  </>
+                )}
+              </nav>
+            </SheetContent>
+          </Sheet>
+
           {/* Logo */}
           <Link href="/homepage" className="flex items-center shrink-0" aria-label="Trang chủ">
             <Image
