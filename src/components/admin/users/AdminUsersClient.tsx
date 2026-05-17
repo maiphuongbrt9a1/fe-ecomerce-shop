@@ -158,7 +158,7 @@ export default function AdminUsersClient() {
 
   // ── Render ───────────────────────────────────────────────────────────────
   return (
-    <div className="p-6 flex gap-5 h-full min-h-0">
+    <div className="p-3 sm:p-4 md:p-6 flex flex-col lg:flex-row gap-4 lg:gap-5 h-full min-h-0">
       {/* Left: virtual table */}
       <div className="flex-1 min-w-0 flex flex-col gap-4 min-h-0">
         <div>
@@ -177,6 +177,8 @@ export default function AdminUsersClient() {
         />
 
         <div className="bg-white shadow rounded-lg flex flex-col flex-1 min-h-0 overflow-hidden">
+          <div className="flex-1 flex flex-col min-h-0 overflow-x-auto">
+            <div className="min-w-[820px] flex flex-col flex-1 min-h-0">
           {/* Fixed header */}
           <div className="bg-[#eaf8e7] flex items-center gap-4 px-2 rounded-t-lg shrink-0">
             {(["ID Khách Hàng", "Tên", "Email", "Số điện thoại", "Tình trạng"] as const).map((col) => (
@@ -265,11 +267,13 @@ export default function AdminUsersClient() {
               )}
             </div>
           )}
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Right: detail card */}
-      <div className="w-[306px] shrink-0 pt-[68px]">
+      <div className="w-full lg:w-[306px] shrink-0 lg:pt-[68px]">
         {selectedUser ? (
           <UserDetailCard user={selectedUser} />
         ) : (

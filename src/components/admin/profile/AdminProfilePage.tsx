@@ -204,14 +204,14 @@ export default function AdminProfilePage({ session }: Props) {
   const username = profile?.username ?? "";
 
   return (
-    <div className="p-6 max-w-[1200px] mx-auto">
+    <div className="p-3 sm:p-4 md:p-6 max-w-[1200px] mx-auto">
       <h1 className="text-[22px] font-bold text-[var(--admin-green-dark)] mb-6 tracking-tight">
         Thông tin của tôi
       </h1>
 
-      <div className="flex gap-6 items-start">
+      <div className="flex flex-col lg:flex-row gap-6 items-start">
         {/* ── Left column ─────────────────────────────────────── */}
-        <div className="flex flex-col gap-5 w-[340px] shrink-0">
+        <div className="flex flex-col gap-5 w-full lg:w-[340px] shrink-0">
           {/* Avatar card */}
           <div className="bg-white rounded-lg shadow-[var(--admin-card-shadow)] p-5 flex flex-col items-center gap-3">
             <div className="w-full flex items-center justify-between mb-1">
@@ -339,7 +339,7 @@ export default function AdminProfilePage({ session }: Props) {
         </div>
 
         {/* ── Right column ────────────────────────────────────── */}
-        <div className="flex-1 min-w-0 bg-white rounded-lg shadow-[var(--admin-card-shadow)] p-6">
+        <div className="flex-1 min-w-0 w-full bg-white rounded-lg shadow-[var(--admin-card-shadow)] p-4 sm:p-6">
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <p className="text-[17px] font-bold text-[#23272e]">Cập nhật trang cá nhân</p>
@@ -355,7 +355,7 @@ export default function AdminProfilePage({ session }: Props) {
           </div>
 
           {/* Avatar upload row */}
-          <div className="flex items-center gap-5 mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-5 mb-8">
             <div className="relative w-16 h-16 rounded-full overflow-hidden shrink-0">
               {avatarUrl ? (
                 <Image
@@ -398,7 +398,7 @@ export default function AdminProfilePage({ session }: Props) {
           </div>
 
           {/* Form fields — 2-column grid */}
-          <div className="grid grid-cols-2 gap-x-5 gap-y-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-5">
             {/* firstName */}
             <div className="flex flex-col gap-1.5">
               <Label className="text-[14px] text-[#023337]">Tên</Label>

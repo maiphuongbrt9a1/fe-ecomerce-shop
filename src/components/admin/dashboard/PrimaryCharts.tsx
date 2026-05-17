@@ -72,17 +72,19 @@ export default function PrimaryCharts({ data, isLoading }: PrimaryChartsProps) {
 
   return (
     <Card className="bg-white rounded-lg shadow-[var(--admin-card-shadow)]">
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
+      <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-2">
         <CardTitle className="text-sm font-medium text-gray-700">
           Biểu đồ theo kỳ — {titles[tab]}
         </CardTitle>
         <Tabs value={tab} onValueChange={(v) => setTab(v as ChartTab)}>
-          <TabsList className="h-8">
-            <TabsTrigger value="revenue" className="text-xs px-2">Doanh thu</TabsTrigger>
-            <TabsTrigger value="orders" className="text-xs px-2">Đơn hàng</TabsTrigger>
-            <TabsTrigger value="customers" className="text-xs px-2">Khách hàng</TabsTrigger>
-            <TabsTrigger value="variants" className="text-xs px-2">Sản phẩm</TabsTrigger>
-          </TabsList>
+          <div className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <TabsList className="h-8 w-max">
+              <TabsTrigger value="revenue" className="text-xs px-2">Doanh thu</TabsTrigger>
+              <TabsTrigger value="orders" className="text-xs px-2">Đơn hàng</TabsTrigger>
+              <TabsTrigger value="customers" className="text-xs px-2">Khách hàng</TabsTrigger>
+              <TabsTrigger value="variants" className="text-xs px-2">Sản phẩm</TabsTrigger>
+            </TabsList>
+          </div>
         </Tabs>
       </CardHeader>
       <CardContent>

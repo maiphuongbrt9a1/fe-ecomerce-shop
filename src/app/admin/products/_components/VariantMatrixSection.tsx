@@ -289,9 +289,9 @@ export default function VariantMatrixSection({
   };
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-[var(--admin-green-dark)]">
+    <div className="bg-white rounded-xl border border-gray-200 p-3 sm:p-4 md:p-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
+        <h3 className="text-base sm:text-lg font-semibold text-[var(--admin-green-dark)]">
           Ma trận sản phẩm con
         </h3>
         {!stockOnly && (
@@ -306,6 +306,7 @@ export default function VariantMatrixSection({
 
       {/* Matrix table */}
       {selectedSizes.length > 0 && selectedColors.length > 0 ? (
+        <div className="overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
@@ -449,6 +450,7 @@ export default function VariantMatrixSection({
             </TableRow>
           </TableFooter>
         </Table>
+        </div>
       ) : (
         <p className="text-center text-sm text-gray-400 py-8">
           Thêm màu sắc và kích cỡ để tạo ma trận sản phẩm con

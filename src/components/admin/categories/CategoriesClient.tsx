@@ -147,7 +147,7 @@ export default function CategoriesClient({ readonly = false }: CategoriesClientP
   };
 
   return (
-    <div className="min-h-screen p-6">
+    <div className="min-h-screen p-3 sm:p-4 md:p-6">
       {/* Delete Confirmation */}
       {!readonly && deleteConfirmId !== null && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -162,9 +162,10 @@ export default function CategoriesClient({ readonly = false }: CategoriesClientP
         </div>
       )}
 
-      <h1 className="text-2xl font-bold text-[#151515] mb-6">Danh mục</h1>
+      <h1 className="text-xl sm:text-2xl font-bold text-[#151515] mb-4 sm:mb-6">Danh mục</h1>
 
-      <div className="bg-white rounded-lg shadow">
+      <div className="bg-white rounded-lg shadow overflow-x-auto">
+        <div className="min-w-[760px]">
         {/* Table Header */}
         <div className="bg-[#eaf8e7] flex items-center gap-4 p-2 rounded-t-md">
           <div className="w-16 px-2 py-2.5"><span className="text-sm font-medium text-[#023337]">STT</span></div>
@@ -231,6 +232,7 @@ export default function CategoriesClient({ readonly = false }: CategoriesClientP
               <span className="text-sm font-bold text-[#4ea674] tracking-tight">Thêm danh mục</span>
             </button>
           )}
+        </div>
         </div>
       </div>
 

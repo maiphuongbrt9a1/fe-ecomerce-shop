@@ -636,7 +636,7 @@ export default function ProductForm({ productId, onSuccess, onCancel, stockOnly 
   const formBody = (
     <>
       {/* Two-column grid */}
-      <div className={`grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6${stockOnly ? " pointer-events-none opacity-60" : ""}`}>
+      <div className={`grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-6 mb-6${stockOnly ? " pointer-events-none opacity-60" : ""}`}>
         <ProductBasicInfoCard
           formState={formState}
           onFieldChange={handleFieldChange}
@@ -680,10 +680,10 @@ export default function ProductForm({ productId, onSuccess, onCancel, stockOnly 
 
   if (isModal) {
     return (
-      <div className="p-6">
+      <div className="p-3 sm:p-4 md:p-6 min-w-0 w-full overflow-x-hidden">
         {formBody}
         {/* Modal footer */}
-        <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-4 border-t border-gray-200">
           <div>
             {isEditMode && !stockOnly && (
               <Button
@@ -719,16 +719,16 @@ export default function ProductForm({ productId, onSuccess, onCancel, stockOnly 
   }
 
   return (
-    <div className="p-8 bg-gray-50 min-h-screen">
+    <div className="p-3 sm:p-4 md:p-6 lg:p-8 bg-gray-50 min-h-screen">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-2xl font-bold text-[var(--admin-green-dark)]">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6 sm:mb-8">
+        <h1 className="text-xl sm:text-2xl font-bold text-[var(--admin-green-dark)]">
           {isEditMode ? "Chỉnh sửa sản phẩm" : "Thêm sản phẩm"}
         </h1>
         <Button
           onClick={handleSave}
           disabled={loading}
-          className="bg-[#4ea674] hover:bg-[#3d8a5f] text-white px-6 cursor-pointer"
+          className="bg-[#4ea674] hover:bg-[#3d8a5f] text-white px-6 cursor-pointer w-full sm:w-auto"
         >
           {loading ? "Đang lưu..." : isEditMode ? "Lưu thay đổi" : "Đăng tải sản phẩm"}
         </Button>

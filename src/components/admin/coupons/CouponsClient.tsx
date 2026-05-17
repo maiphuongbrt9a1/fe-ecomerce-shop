@@ -303,7 +303,7 @@ export default function CouponsClient({ readonly = false }: CouponsClientProps) 
   const COLS = readonly ? COLS_READONLY : COLS_FULL;
 
   return (
-    <div className="h-full p-6 flex flex-col">
+    <div className="h-full p-3 sm:p-4 md:p-6 flex flex-col">
       {/* Delete Confirmation */}
       {!readonly && deleteConfirmId !== null && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -319,8 +319,8 @@ export default function CouponsClient({ readonly = false }: CouponsClientProps) 
       )}
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-4 flex-shrink-0">
-        <h1 className="text-2xl font-bold text-[#151515]">Voucher</h1>
+      <div className="flex items-center justify-between mb-4 flex-shrink-0 gap-2">
+        <h1 className="text-xl sm:text-2xl font-bold text-[#151515]">Voucher</h1>
         {!readonly && (
           <Button onClick={openCreate} className="flex items-center gap-2 cursor-pointer">
             <PlusSquare size={18} />
@@ -331,7 +331,7 @@ export default function CouponsClient({ readonly = false }: CouponsClientProps) 
 
       <div className="bg-white shadow rounded-lg flex flex-col flex-1 min-h-0 overflow-hidden">
         {/* Search + Filter */}
-        <div className="flex items-center gap-2 px-4 pt-3 pb-2 flex-shrink-0">
+        <div className="flex items-center gap-2 flex-wrap px-3 sm:px-4 pt-3 pb-2 flex-shrink-0">
           <div className="relative flex-1 max-w-xs">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
             <input type="text" placeholder="Tìm mã voucher..." value={searchInput} onChange={(e) => handleSearchChange(e.target.value)} className="pl-9 pr-8 py-2 bg-gray-100 text-sm outline-none focus:ring-1 focus:ring-[var(--admin-green-mid)] rounded-md w-full" />
@@ -387,6 +387,8 @@ export default function CouponsClient({ readonly = false }: CouponsClientProps) 
           )}
         </div>
 
+        <div className="flex-1 flex flex-col min-h-0 overflow-x-auto">
+          <div className="min-w-[1200px] flex flex-col flex-1 min-h-0">
         {/* Table Header */}
         <div className="grid bg-[#eaf8e7] flex-shrink-0 text-sm font-semibold text-[#023337]" style={{ gridTemplateColumns: COLS }}>
           <div className="px-4 py-3">STT</div>
@@ -446,6 +448,8 @@ export default function CouponsClient({ readonly = false }: CouponsClientProps) 
               {loadingMore && <div className="flex items-center justify-center py-4 gap-2 text-gray-400 text-sm"><Loader2 size={16} className="animate-spin" />Đang tải thêm...</div>}
             </>
           )}
+        </div>
+          </div>
         </div>
       </div>
 

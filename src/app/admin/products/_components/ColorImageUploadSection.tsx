@@ -25,7 +25,7 @@ export default function ColorImageUploadSection({
   };
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-6">
+    <div className="bg-white rounded-xl border border-gray-200 p-3 sm:p-4 md:p-6">
       <h3 className="text-lg font-semibold text-[var(--admin-green-dark)] mb-4">
         Upload ảnh sản phẩm theo màu
       </h3>

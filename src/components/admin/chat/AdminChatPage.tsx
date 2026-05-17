@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Image from "next/image";
 import {
+  ChevronLeft,
   MessageSquare,
   Send,
   Wifi,
@@ -479,7 +480,7 @@ export default function AdminChatPage() {
   return (
     <div className="flex h-full bg-white rounded-lg overflow-hidden shadow">
       {/* Left panel — room list */}
-      <div className="w-72 border-r border-gray-200 flex flex-col flex-shrink-0">
+      <div className={`w-full md:w-72 border-r border-gray-200 flex-col flex-shrink-0 ${activeRoom ? "hidden md:flex" : "flex"}`}>
         {/* Header */}
         <div className="px-4 py-4 border-b border-gray-200">
           <div className="flex items-center justify-between">
@@ -572,7 +573,14 @@ export default function AdminChatPage() {
       {activeRoom ? (
         <div className="flex-1 flex flex-col min-w-0">
           {/* Chat header */}
-          <div className="px-6 py-4 border-b border-gray-200 flex items-center gap-3 flex-shrink-0">
+          <div className="px-3 sm:px-6 py-4 border-b border-gray-200 flex items-center gap-3 flex-shrink-0">
+            <button
+              onClick={() => setActiveRoom(null)}
+              className="md:hidden p-1.5 -ml-1 rounded-md hover:bg-gray-100 cursor-pointer text-gray-600"
+              aria-label="Quay lại"
+            >
+              <ChevronLeft size={20} />
+            </button>
             <div className="w-9 h-9 rounded-md bg-[var(--admin-green-mid)] flex items-center justify-center text-[var(--admin-green-dark)] text-sm font-bold shrink-0">
               {activeRoom.isPrivate ? (
                 getPeerLabel(activeRoom.name, currentUserEmail ?? "")
@@ -598,7 +606,7 @@ export default function AdminChatPage() {
           <div
             ref={scrollContainerRef}
             onScroll={handleMessagesScroll}
-            className="flex-1 overflow-y-auto px-6 py-4 bg-gray-50"
+            className="flex-1 overflow-y-auto px-3 sm:px-6 py-4 bg-gray-50"
           >
             {loadingMore && (
               <div className="flex justify-center py-2">
@@ -687,7 +695,7 @@ export default function AdminChatPage() {
           )}
         </div>
       ) : (
-        <div className="flex-1 flex flex-col items-center justify-center bg-gray-50 text-gray-400">
+        <div className="flex-1 hidden md:flex flex-col items-center justify-center bg-gray-50 text-gray-400">
           <MessageSquare size={48} className="mb-3 opacity-30" />
           <p className="text-sm">Chọn cuộc trò chuyện để bắt đầu</p>
         </div>

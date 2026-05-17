@@ -194,7 +194,7 @@ export default function DashboardClient({ token }: DashboardClientProps) {
   const pct = (m: AnalyticsDashboardCardNumberMetricDto | null) => m?.percentageChange ?? 0;
 
   return (
-    <div className="p-6 space-y-8">
+    <div className="p-3 sm:p-4 md:p-6 space-y-6 sm:space-y-8">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
