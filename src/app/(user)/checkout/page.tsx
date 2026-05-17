@@ -391,7 +391,13 @@ function CheckoutContent() {
     }
 
     const totalDiscount = totalItemDiscount + totalPackageDiscount;
-    const totalAmount = subTotal + totalShippingFee - totalDiscount;
+    // subTotalPriceForPackage is already net of item-level discounts, and
+    // totalPriceForPackage is the BE-authoritative order total. Sum that directly
+    // instead of re-deriving — otherwise item discounts get subtracted twice.
+    const totalAmount = Object.values(packages).reduce(
+      (sum, pkg) => sum + pkg.PackageDetail.totalPriceForPackage,
+      0,
+    );
 
     return {
       subTotal,
