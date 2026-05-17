@@ -3,8 +3,9 @@
 import { useEffect, useState, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Pencil, Trash2, PlusSquare } from "lucide-react";
+import { Pencil, Trash2, PlusSquare, Link2, Plus, Grid3x3 } from "lucide-react";
 import { categoryService } from "@/services/category";
+import { categoryMappingService } from "@/services/category-mapping";
 import type { CategoryDto } from "@/dto/category";
 import {
   Dialog,
@@ -15,7 +16,10 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import CategoryMixDialog from "@/components/admin/categories/CategoryMixDialog";
+import CategoryMixMatrixSheet from "@/components/admin/categories/CategoryMixMatrixSheet";
 
 interface CategoriesClientProps {
   readonly?: boolean;
@@ -30,6 +34,9 @@ export default function CategoriesClient({ readonly = false }: CategoriesClientP
   const [loading, setLoading] = useState(true);
   const PER_PAGE = 10;
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
+  const [mixOpenFor, setMixOpenFor] = useState<CategoryDto | null>(null);
+  const [mixCounts, setMixCounts] = useState<Record<number, number>>({});
+  const [matrixOpen, setMatrixOpen] = useState(false);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<"add" | "edit">("add");
@@ -63,9 +70,27 @@ export default function CategoriesClient({ readonly = false }: CategoriesClientP
     }
   }, [accessToken, PER_PAGE]);
 
+  const fetchMixCounts = useCallback(async () => {
+    if (!accessToken) return;
+    try {
+      const res = await categoryMappingService.getCounts(accessToken);
+      const list = Array.isArray(res.data) ? res.data : [];
+      const map: Record<number, number> = {};
+      for (const row of list) {
+        map[Number(row.baseCategoryId)] = row.count;
+      }
+      setMixCounts(map);
+    } catch (err) {
+      console.error("[CategoriesClient] Mix counts error:", err);
+    }
+  }, [accessToken]);
+
   useEffect(() => {
-    if (accessToken) fetchCategories();
-  }, [accessToken, fetchCategories]);
+    if (accessToken) {
+      fetchCategories();
+      fetchMixCounts();
+    }
+  }, [accessToken, fetchCategories, fetchMixCounts]);
 
   const openAddDialog = () => {
     setDialogMode("add");
@@ -162,7 +187,20 @@ export default function CategoriesClient({ readonly = false }: CategoriesClientP
         </div>
       )}
 
-      <h1 className="text-xl sm:text-2xl font-bold text-[#151515] mb-4 sm:mb-6">Danh mục</h1>
+      <div className="flex items-center justify-between gap-3 mb-4 sm:mb-6">
+        <h1 className="text-xl sm:text-2xl font-bold text-[#151515]">Danh mục</h1>
+        {!readonly && (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setMatrixOpen(true)}
+            className="cursor-pointer gap-2"
+          >
+            <Grid3x3 className="w-4 h-4" />
+            Ma trận gợi ý mix
+          </Button>
+        )}
+      </div>
 
       <div className="bg-white rounded-lg shadow overflow-x-auto">
         <div className="min-w-[760px]">
@@ -194,11 +232,37 @@ export default function CategoriesClient({ readonly = false }: CategoriesClientP
                   <span className="text-sm text-black">{index + 1}</span>
                 </div>
                 <div className="flex-1 px-2.5 flex items-center justify-center">
-                  <div className="flex items-center gap-3 w-[203px]">
-                    <div className="w-10 h-10 rounded border border-gray-200 bg-gray-100 flex items-center justify-center shrink-0 overflow-hidden">
-                      <span className="text-gray-400 text-lg font-medium">{cat.name.charAt(0).toUpperCase()}</span>
-                    </div>
+                  <div className="flex flex-col gap-1 w-[260px] min-w-0">
                     <span className="text-sm text-black truncate">{cat.name}</span>
+                      {!readonly && (
+                        (mixCounts[cat.id] ?? 0) > 0 ? (
+                          <Badge
+                            variant="secondary"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setMixOpenFor(cat);
+                            }}
+                            className="cursor-pointer gap-1 px-2 py-0.5 bg-[var(--admin-green-light)] text-[var(--admin-green-dark)] hover:bg-[var(--admin-green-mid)] w-fit"
+                            aria-label={`Chỉnh sửa gợi ý mix cho ${cat.name}`}
+                          >
+                            <Link2 className="w-3 h-3" />
+                            {mixCounts[cat.id]} gợi ý mix
+                          </Badge>
+                        ) : (
+                          <Badge
+                            variant="outline"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setMixOpenFor(cat);
+                            }}
+                            className="cursor-pointer gap-1 px-2 py-0.5 text-gray-500 hover:bg-gray-50 w-fit"
+                            aria-label={`Thêm gợi ý mix cho ${cat.name}`}
+                          >
+                            <Plus className="w-3 h-3" />
+                            Thêm gợi ý mix
+                          </Badge>
+                        )
+                      )}
                   </div>
                 </div>
                 <div className="flex-1 px-2.5 text-center">
@@ -235,6 +299,31 @@ export default function CategoriesClient({ readonly = false }: CategoriesClientP
         </div>
         </div>
       </div>
+
+      {/* Mix/Match Dialog */}
+      {!readonly && (
+        <CategoryMixDialog
+          open={!!mixOpenFor}
+          onOpenChange={(o) => {
+            if (!o) setMixOpenFor(null);
+          }}
+          category={mixOpenFor}
+          allCategories={categories}
+          accessToken={accessToken}
+          onSaved={fetchMixCounts}
+        />
+      )}
+
+      {/* Mix/Match Matrix Sheet */}
+      {!readonly && (
+        <CategoryMixMatrixSheet
+          open={matrixOpen}
+          onOpenChange={setMatrixOpen}
+          allCategories={categories}
+          accessToken={accessToken}
+          onSaved={fetchMixCounts}
+        />
+      )}
 
       {/* Add/Edit Dialog */}
       {!readonly && (
