@@ -1,5 +1,10 @@
 import { sendRequest, sendRequestFile } from "@/utils/api";
-import type { ProductVariantEntity, CreateProductVariantDto, UpdateProductVariantDto } from "@/dto/product-variant";
+import type {
+  ProductVariantEntity,
+  ProductVariantWithMediaAndProductEntity,
+  CreateProductVariantDto,
+  UpdateProductVariantDto,
+} from "@/dto/product-variant";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "";
 
@@ -96,17 +101,21 @@ export const productVariantService = {
     return response;
   },
 
-  async getAllProductVariants(accessToken?: string): Promise<IBackendRes<ProductVariantEntity[]>> {
+  async getAllProductVariants(
+    params: { page?: number; perPage?: number; search?: string; accessToken?: string } = {}
+  ): Promise<IBackendRes<ProductVariantWithMediaAndProductEntity[]>> {
+    const { page = 1, perPage = 10, search, accessToken } = params;
     const url = `${BACKEND_URL}/product-variants`;
-    // console.log("[ProductVariantService] Fetching all product variants");
-    const response = await sendRequest<IBackendRes<ProductVariantEntity[]>>({
+    const queryParams: Record<string, string | number> = { page, perPage };
+    if (search && search.trim()) queryParams.search = search.trim();
+    const response = await sendRequest<IBackendRes<ProductVariantWithMediaAndProductEntity[]>>({
       url,
       method: "GET",
+      queryParams,
       headers: accessToken
         ? { Authorization: `Bearer ${accessToken}` }
         : undefined,
     });
-    // console.log("[ProductVariantService] Product variants response:", response);
     return response;
   },
 

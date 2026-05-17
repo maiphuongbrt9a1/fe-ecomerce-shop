@@ -3,10 +3,9 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { Loader2, Phone, MapPin } from "lucide-react";
-import type { UserDto } from "@/services/user";
-import type { OrderFullInformationEntity } from "@/dto/order";
+import type { UserDto, UserOrderStatsDto } from "@/services/user";
+import { userService } from "@/services/user";
 import { addressService } from "@/services/address";
-import { orderService } from "@/services/order";
 
 type UserStatus = "ACTIVE" | "INACTIVE" | "VIP";
 
@@ -57,7 +56,7 @@ export function EmptyUserDetailCard() {
 export default function UserDetailCard({ user, hideContactInfo, hideOrderStats, hideStatus }: UserDetailCardProps) {
   const { data: session } = useSession();
   const [addressLine, setAddressLine] = useState<string | undefined>(undefined);
-  const [orders, setOrders] = useState<OrderFullInformationEntity[]>([]);
+  const [stats, setStats] = useState<UserOrderStatsDto | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -77,39 +76,36 @@ export default function UserDetailCard({ user, hideContactInfo, hideOrderStats, 
   useEffect(() => {
     const token = session?.user?.access_token;
     if (!token || !user.id || hideOrderStats) return;
-    setOrders([]);
+    let cancelled = false;
+    setStats(null);
     setLoading(true);
-    const PER_PAGE = 10;
-    async function fetchAll() {
-      const all: OrderFullInformationEntity[] = [];
-      let page = 1;
-      try {
-        while (true) {
-          const res = await orderService.getUserOrders(user.id, token!, page, PER_PAGE);
-          const batch = res?.data ?? [];
-          if (batch.length === 0) break;
-          all.push(...batch);
-          if (batch.length < PER_PAGE) break;
-          page++;
-        }
-        setOrders(all);
-      } catch {
-        setOrders([]);
-      } finally {
+    userService
+      .getUserOrderStats(user.id, token)
+      .then((res) => {
+        if (cancelled) return;
+        setStats(res.data ?? null);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setStats(null);
+      })
+      .finally(() => {
+        if (cancelled) return;
         setLoading(false);
-      }
-    }
-    fetchAll();
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [user.id, session?.user?.access_token, hideOrderStats]);
 
   const name   = getDisplayName(user);
   const status = getStatus(user);
   const cfg    = STATUS_CONFIG[status];
 
-  const orderCount     = orders.length;
-  const completedCount = orders.filter((o) => o.status === "COMPLETED" || o.status === "DELIVERED").length;
-  const cancelledCount = orders.filter((o) => o.status === "CANCELLED").length;
-  const totalSpend     = orders.reduce((sum, o) => sum + (o.totalAmount ?? 0), 0);
+  const orderCount     = stats?.orderCount ?? 0;
+  const completedCount = stats?.completedCount ?? 0;
+  const cancelledCount = stats?.cancelledCount ?? 0;
+  const totalSpend     = stats?.totalSpend ?? 0;
 
   return (
     <div className="bg-white rounded-lg shadow-[0px_1px_3px_0px_rgba(0,0,0,0.2)] p-5 flex flex-col gap-[10px]">

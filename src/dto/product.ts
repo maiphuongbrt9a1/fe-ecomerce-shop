@@ -98,6 +98,7 @@ export interface PaginatedProductsResponse {
 export interface GetProductsParams {
   page?: number;
   perPage?: number;
+  search?: string;
 }
 
 /**

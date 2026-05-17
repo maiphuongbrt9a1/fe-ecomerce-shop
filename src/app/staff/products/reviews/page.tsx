@@ -9,6 +9,7 @@ import type { AdminReviewDto } from "@/dto/review";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import ReviewDetailSheet from "@/app/admin/products/reviews/_components/ReviewDetailSheet";
+import RowImage from "@/components/RowImage";
 
 const ROW_HEIGHT = 64;
 const PER_PAGE = 50;
@@ -118,31 +119,35 @@ export default function StaffProductsReviewsPage() {
   }, [reviews]);
 
   return (
-    <div className="p-6 flex flex-col gap-4 h-full min-h-0">
-      <h1 className="text-2xl font-bold text-[var(--admin-green-dark)]">Đánh giá sản phẩm</h1>
+    <div className="p-3 sm:p-4 md:p-6 flex flex-col gap-4 h-full min-h-0">
+      <h1 className="text-xl sm:text-2xl font-bold text-[var(--admin-green-dark)]">Đánh giá sản phẩm</h1>
 
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as FilterTab)}>
-        <TabsList className="bg-[var(--admin-green-light)]">
-          <TabsTrigger value="all" className="cursor-pointer">Tất cả</TabsTrigger>
-          <TabsTrigger value="5" className="cursor-pointer">5★ {activeTab === "all" && ratingCounts[5] > 0 && `(${ratingCounts[5]})`}</TabsTrigger>
-          <TabsTrigger value="4" className="cursor-pointer">4★ {activeTab === "all" && ratingCounts[4] > 0 && `(${ratingCounts[4]})`}</TabsTrigger>
-          <TabsTrigger value="3" className="cursor-pointer">3★ {activeTab === "all" && ratingCounts[3] > 0 && `(${ratingCounts[3]})`}</TabsTrigger>
-          <TabsTrigger value="2" className="cursor-pointer">2★ {activeTab === "all" && ratingCounts[2] > 0 && `(${ratingCounts[2]})`}</TabsTrigger>
-          <TabsTrigger value="1" className="cursor-pointer">1★ {activeTab === "all" && ratingCounts[1] > 0 && `(${ratingCounts[1]})`}</TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto -mx-3 sm:mx-0 px-3 sm:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <TabsList className="bg-[var(--admin-green-light)] w-max">
+            <TabsTrigger value="all" className="cursor-pointer">Tất cả</TabsTrigger>
+            <TabsTrigger value="5" className="cursor-pointer">5★ {activeTab === "all" && ratingCounts[5] > 0 && `(${ratingCounts[5]})`}</TabsTrigger>
+            <TabsTrigger value="4" className="cursor-pointer">4★ {activeTab === "all" && ratingCounts[4] > 0 && `(${ratingCounts[4]})`}</TabsTrigger>
+            <TabsTrigger value="3" className="cursor-pointer">3★ {activeTab === "all" && ratingCounts[3] > 0 && `(${ratingCounts[3]})`}</TabsTrigger>
+            <TabsTrigger value="2" className="cursor-pointer">2★ {activeTab === "all" && ratingCounts[2] > 0 && `(${ratingCounts[2]})`}</TabsTrigger>
+            <TabsTrigger value="1" className="cursor-pointer">1★ {activeTab === "all" && ratingCounts[1] > 0 && `(${ratingCounts[1]})`}</TabsTrigger>
+          </TabsList>
+        </div>
       </Tabs>
 
-      <div className="relative">
+      <div className="relative w-full max-w-2xl">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
         <Input
           type="text"
           placeholder="Tìm theo tên sản phẩm, người dùng, email hoặc nội dung..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-9 max-w-2xl"
+          className="pl-9"
         />
       </div>
 
+      <div className="flex-1 flex flex-col min-h-0 overflow-x-auto">
+        <div className="min-w-[1080px] flex flex-col flex-1 min-h-0">
       <div style={{ display: "grid", gridTemplateColumns: COLS }} className="bg-[var(--admin-green-light)] rounded-lg px-4 py-2 text-sm font-semibold text-[var(--admin-green-dark)] flex-shrink-0">
         <div className="flex items-center">#</div>
         <div className="flex items-center">Ảnh</div>
@@ -163,7 +168,7 @@ export default function StaffProductsReviewsPage() {
           {searchQuery ? "Không tìm thấy đánh giá phù hợp." : "Chưa có đánh giá nào trong mục này."}
         </div>
       ) : (
-        <div ref={tableContainerRef} className="overflow-auto flex-1 relative border border-gray-200 rounded-lg min-h-0">
+        <div ref={tableContainerRef} className="overflow-y-auto flex-1 relative border border-gray-200 rounded-lg min-h-0 mt-2">
           <div style={{ height: rowVirtualizer.getTotalSize(), position: "relative" }}>
             {rowVirtualizer.getVirtualItems().map((vi) => {
               const review = filteredReviews[vi.index];
@@ -197,8 +202,9 @@ export default function StaffProductsReviewsPage() {
                   <div className="text-gray-400 text-xs">{vi.index + 1}</div>
                   <div className="flex items-center justify-center">
                     {thumbUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={thumbUrl} alt="" className="w-12 h-12 rounded object-cover" />
+                      <div className="w-12 h-12 rounded overflow-hidden">
+                        <RowImage src={thumbUrl} alt="" size={48} />
+                      </div>
                     ) : (
                       <div className="w-12 h-12 rounded bg-gray-100 flex items-center justify-center text-gray-300">
                         <ImageIcon size={18} />
@@ -242,6 +248,8 @@ export default function StaffProductsReviewsPage() {
           )}
         </div>
       )}
+        </div>
+      </div>
 
       <ReviewDetailSheet
         review={selectedReview}

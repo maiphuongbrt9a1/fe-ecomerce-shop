@@ -252,16 +252,33 @@ export const orderService = {
   async getAllOrderDetails(
     page: number,
     perPage: number,
-    accessToken: string
+    accessToken: string,
+    options: {
+      statusFilter?:
+        | "all"
+        | "waiting"
+        | "shipping"
+        | "delivered"
+        | "pending_return"
+        | "returned"
+        | "cancelled";
+      search?: string;
+    } = {}
   ): Promise<IBackendRes<OrderFullInformationEntity[]>> {
-    const url = `${BACKEND_URL}/orders/order-detail-list?page=${page}&perPage=${perPage}`;
-    // console.log("[OrderService] Fetching all order details page:", page);
+    const params = new URLSearchParams();
+    params.set("page", String(page));
+    params.set("perPage", String(perPage));
+    if (options.statusFilter && options.statusFilter !== "all") {
+      params.set("statusFilter", options.statusFilter);
+    }
+    const trimmed = options.search?.trim();
+    if (trimmed) params.set("search", trimmed);
+    const url = `${BACKEND_URL}/orders/order-detail-list?${params.toString()}`;
     const response = await sendRequest<IBackendRes<OrderFullInformationEntity[]>>({
       url,
       method: "GET",
       headers: { Authorization: `Bearer ${accessToken}` },
     });
-    // console.log("[OrderService] All order details response:", response?.data?.length, "items");
     return response;
   },
 

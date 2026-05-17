@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useMemo } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Search, Loader2 } from "lucide-react";
@@ -10,8 +10,10 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { STATUS_CONFIG } from "@/app/admin/orders/_components/orderStatusConfig";
 import OrderDetailSheet from "@/app/admin/orders/_components/OrderDetailSheet";
+import RowImage from "@/components/RowImage";
 import { getReturnRequestOverlay } from "@/utils/returnRequestStatus";
 import { Undo2 } from "lucide-react";
+import { useDebounce } from "@/hooks/useDebounce";
 
 const ROW_HEIGHT = 56;
 const PER_PAGE = 10;
@@ -25,39 +27,6 @@ type FilterTab =
   | "pending_return"
   | "returned"
   | "cancelled";
-
-function applyTabFilter(orders: OrderFullInformationEntity[], tab: FilterTab): OrderFullInformationEntity[] {
-  switch (tab) {
-    case "all": return orders;
-    case "waiting":
-      return orders.filter((o) =>
-        o.status === "PENDING" ||
-        o.status === "PAYMENT_PROCESSING" ||
-        o.status === "PAYMENT_CONFIRMED"
-      );
-    case "shipping":
-      return orders.filter((o) =>
-        o.status === "WAITING_FOR_PICKUP" || o.status === "SHIPPED"
-      );
-    case "delivered":
-      return orders.filter((o) =>
-        o.status === "DELIVERED" || o.status === "COMPLETED"
-      );
-    case "pending_return":
-      return orders.filter((o) =>
-        o.requests?.some(
-          (r) => r.subject === "RETURN_REQUEST" &&
-            (r.status === "PENDING" || r.status === "IN_PROGRESS")
-        )
-      );
-    case "returned":
-      return orders.filter((o) => o.status === "RETURNED");
-    case "cancelled":
-      return orders.filter((o) =>
-        o.status === "CANCELLED" || o.status === "DELIVERED_FAILED"
-      );
-  }
-}
 
 const formatDate = (dateStr: string) => {
   const d = new Date(dateStr);
@@ -78,23 +47,32 @@ export default function OrdersClient() {
 
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!accessToken) return;
-    let cancelled = false;
+  // BE filters by tab + search; FE just renders what the server returns.
+  // requestTokenRef discards stale pagination loops if the user changes tab or
+  // types faster than the network can keep up.
+  const debouncedSearch = useDebounce(searchQuery, 300);
+  const requestTokenRef = useRef(0);
 
-    (async () => {
+  const fetchOrders = useCallback(
+    async (tab: FilterTab, search: string) => {
+      if (!accessToken) return;
+      const token = ++requestTokenRef.current;
       setLoading(true);
       setOrders([]);
       const all: OrderFullInformationEntity[] = [];
       let page = 1;
       try {
-        while (!cancelled) {
-          console.log("[OrdersClient] Fetching all orders page:", page);
-          const res = await orderService.getAllOrderDetails(page, PER_PAGE, accessToken);
+        while (true) {
+          const res = await orderService.getAllOrderDetails(
+            page,
+            PER_PAGE,
+            accessToken,
+            { statusFilter: tab, search },
+          );
+          if (token !== requestTokenRef.current) return;
           const data = Array.isArray(res.data) ? res.data : [];
           if (data.length === 0) break;
           all.push(...data);
-          if (cancelled) return;
           if (page === 1) {
             setOrders(all.slice());
             setLoading(false);
@@ -105,36 +83,24 @@ export default function OrdersClient() {
           if (data.length < PER_PAGE) break;
           page += 1;
         }
-        console.log("[OrdersClient] Done. Total orders:", all.length);
       } catch (err) {
         console.error("[OrdersClient] Fetch error:", err);
       } finally {
-        if (!cancelled) {
+        if (token === requestTokenRef.current) {
           setLoading(false);
           setLoadingMore(false);
         }
       }
-    })();
+    },
+    [accessToken],
+  );
 
-    return () => { cancelled = true; };
-  }, [accessToken]);
-
-  const filteredOrders = useMemo(() => {
-    let result = applyTabFilter(orders, activeTab);
-    if (searchQuery.trim()) {
-      const q = searchQuery.trim().toLowerCase();
-      result = result.filter(
-        (o) => {
-          const fullName = [o.user?.lastName, o.user?.firstName].filter(Boolean).join(" ").toLowerCase();
-          return String(o.id).includes(q) || fullName.includes(q) || (o.user?.email ?? "").toLowerCase().includes(q);
-        }
-      );
-    }
-    return result;
-  }, [orders, activeTab, searchQuery]);
+  useEffect(() => {
+    fetchOrders(activeTab, debouncedSearch);
+  }, [fetchOrders, activeTab, debouncedSearch]);
 
   const rowVirtualizer = useVirtualizer({
-    count: filteredOrders.length,
+    count: orders.length,
     getScrollElement: () => tableContainerRef.current,
     estimateSize: () => ROW_HEIGHT,
     overscan: 10,
@@ -146,24 +112,26 @@ export default function OrdersClient() {
   };
 
   return (
-    <div className="p-6 flex flex-col gap-4 h-full min-h-0">
-      <h1 className="text-2xl font-bold text-[var(--admin-green-dark)]">
+    <div className="p-3 sm:p-4 md:p-6 flex flex-col gap-4 h-full min-h-0">
+      <h1 className="text-xl sm:text-2xl font-bold text-[var(--admin-green-dark)]">
         Quản lý đơn hàng
       </h1>
 
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as FilterTab)}>
-        <TabsList className="bg-[var(--admin-green-light)]">
-          <TabsTrigger value="all" className="cursor-pointer">Tất cả</TabsTrigger>
-          <TabsTrigger value="waiting" className="cursor-pointer">Đang chờ</TabsTrigger>
-          <TabsTrigger value="shipping" className="cursor-pointer">Đang giao</TabsTrigger>
-          <TabsTrigger value="delivered" className="cursor-pointer">Đã giao</TabsTrigger>
-          <TabsTrigger value="pending_return" className="cursor-pointer">Yêu cầu trả hàng</TabsTrigger>
-          <TabsTrigger value="returned" className="cursor-pointer">Hoàn tiền</TabsTrigger>
-          <TabsTrigger value="cancelled" className="cursor-pointer">Đã hủy</TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto -mx-3 sm:mx-0 px-3 sm:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <TabsList className="bg-[var(--admin-green-light)] w-max">
+            <TabsTrigger value="all" className="cursor-pointer">Tất cả</TabsTrigger>
+            <TabsTrigger value="waiting" className="cursor-pointer">Đang chờ</TabsTrigger>
+            <TabsTrigger value="shipping" className="cursor-pointer">Đang giao</TabsTrigger>
+            <TabsTrigger value="delivered" className="cursor-pointer">Đã giao</TabsTrigger>
+            <TabsTrigger value="pending_return" className="cursor-pointer">Yêu cầu trả hàng</TabsTrigger>
+            <TabsTrigger value="returned" className="cursor-pointer">Hoàn tiền</TabsTrigger>
+            <TabsTrigger value="cancelled" className="cursor-pointer">Đã hủy</TabsTrigger>
+          </TabsList>
+        </div>
       </Tabs>
 
-      <div className="relative w-72">
+      <div className="relative w-full sm:w-72">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
         <Input
           placeholder="Tìm theo mã đơn, khách hàng..."
@@ -173,32 +141,34 @@ export default function OrdersClient() {
         />
       </div>
 
-      <div
-        style={{ display: "grid", gridTemplateColumns: COLS }}
-        className="bg-[var(--admin-green-light)] rounded-lg px-4 py-2 text-sm font-semibold text-[var(--admin-green-dark)] flex-shrink-0"
-      >
-        <div className="flex items-center">#</div>
-        <div className="flex items-center">Sản phẩm</div>
-        <div className="flex items-center">Khách hàng</div>
-        <div className="flex items-center">Thời gian</div>
-        <div className="flex items-center">Giá</div>
-        <div className="flex items-center">Phương thức</div>
-        <div className="flex items-center">Mã vận đơn</div>
-        <div className="flex items-center">Tình trạng</div>
-      </div>
+      <div className="flex-1 flex flex-col min-h-0 overflow-x-auto">
+        <div className="min-w-[1100px] flex flex-col flex-1 min-h-0">
+          <div
+            style={{ display: "grid", gridTemplateColumns: COLS }}
+            className="bg-[var(--admin-green-light)] rounded-lg px-4 py-2 text-sm font-semibold text-[var(--admin-green-dark)] flex-shrink-0"
+          >
+            <div className="flex items-center">#</div>
+            <div className="flex items-center">Sản phẩm</div>
+            <div className="flex items-center">Khách hàng</div>
+            <div className="flex items-center">Thời gian</div>
+            <div className="flex items-center">Giá</div>
+            <div className="flex items-center">Phương thức</div>
+            <div className="flex items-center">Mã vận đơn</div>
+            <div className="flex items-center">Tình trạng</div>
+          </div>
 
-      {loading ? (
-        <div className="flex-1 flex items-center justify-center">
-          <Loader2 className="animate-spin text-[var(--admin-green-dark)] w-8 h-8" />
-        </div>
-      ) : (
-        <div
-          ref={tableContainerRef}
-          className="overflow-auto flex-1 relative border border-gray-200 rounded-lg min-h-0"
-        >
+          {loading ? (
+            <div className="flex-1 flex items-center justify-center">
+              <Loader2 className="animate-spin text-[var(--admin-green-dark)] w-8 h-8" />
+            </div>
+          ) : (
+            <div
+              ref={tableContainerRef}
+              className="overflow-y-auto flex-1 relative border border-gray-200 rounded-lg min-h-0 mt-2"
+            >
           <div style={{ height: rowVirtualizer.getTotalSize(), position: "relative" }}>
             {rowVirtualizer.getVirtualItems().map((vi) => {
-              const order = filteredOrders[vi.index];
+              const order = orders[vi.index];
               const firstItem = order.orderItems?.[0];
               const thumbUrl = firstItem?.productVariant?.media?.[0]?.url ?? null;
               const productName = firstItem?.productVariant?.variantName ?? "—";
@@ -226,11 +196,9 @@ export default function OrdersClient() {
                 >
                   <div className="text-gray-400 text-xs">{vi.index + 1}</div>
                   <div className="flex items-center gap-2 overflow-hidden">
-                    {thumbUrl ? (
-                      <img src={thumbUrl} alt={productName} className="w-8 h-8 rounded object-cover flex-shrink-0" onError={(e) => { (e.target as HTMLImageElement).src = "/no-image.jpg"; }} />
-                    ) : (
-                      <div className="w-8 h-8 rounded bg-gray-100 flex-shrink-0" />
-                    )}
+                    <div className="w-8 h-8 rounded overflow-hidden flex-shrink-0">
+                      <RowImage src={thumbUrl ?? null} alt={productName} size={32} />
+                    </div>
                     <span className="truncate text-gray-700">{productName}</span>
                   </div>
                   <div className="text-gray-600 truncate">
@@ -265,13 +233,15 @@ export default function OrdersClient() {
             </div>
           )}
 
-          {!loading && filteredOrders.length === 0 && (
+          {!loading && orders.length === 0 && (
             <div className="flex items-center justify-center h-40 text-gray-400 text-sm">
               Không có đơn hàng nào
             </div>
           )}
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       <OrderDetailSheet
         order={selectedOrder}

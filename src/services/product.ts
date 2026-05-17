@@ -34,18 +34,18 @@ export const productService = {
   async getAllProducts(
     params: GetProductsParams & { accessToken?: string }
   ): Promise<IBackendRes<ProductDto[]>> {
-    const { page = 1, perPage = 20, accessToken } = params;
+    const { page = 1, perPage = 20, search, accessToken } = params;
     const url = `${BACKEND_URL}/products`;
-    // console.log("[ProductService] Fetching all products:", { page, perPage });
+    const queryParams: Record<string, string | number> = { page, perPage };
+    if (search && search.trim()) queryParams.search = search.trim();
     const response = await sendRequest<IBackendRes<ProductDto[]>>({
       url,
       method: "GET",
-      queryParams: { page, perPage },
+      queryParams,
       headers: accessToken ? {
         Authorization: `Bearer ${accessToken}`,
       } : {},
     });
-    // console.log("[ProductService] Products response:", response);
     return response;
   },
 

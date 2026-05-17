@@ -5,6 +5,7 @@ import { ChevronDown } from "lucide-react";
 import { useNotifications } from "@/components/notification/NotificationContext";
 import { getNotificationRoute, extractOrderId } from "@/utils/notification-route";
 import { Button } from "@/components/ui/button";
+import RowImage from "@/components/RowImage";
 import { useRouter } from "next/navigation";
 import type { NotificationDto } from "@/dto/notification";
 import dayjs from "dayjs";
@@ -36,6 +37,7 @@ function NotifIcon({
   const orderId = isPersonal ? extractOrderId(notification.content) : null;
   const imgUrl = orderId ? orderImageMap[orderId] : null;
   const dim = size === "sm" ? "w-7 h-7" : "w-10 h-10";
+  const px = size === "sm" ? 28 : 40;
   return (
     <div
       className={`${dim} flex items-center justify-center flex-shrink-0 overflow-hidden ${
@@ -43,8 +45,7 @@ function NotifIcon({
       }`}
     >
       {imgUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={imgUrl} alt="" className="w-full h-full object-cover" />
+        <RowImage src={imgUrl} alt="" size={px} />
       ) : (
         <i className={`fa-solid ${isPersonal ? "fa-box" : "fa-tag"} ${size === "sm" ? "text-xs" : ""}`} />
       )}

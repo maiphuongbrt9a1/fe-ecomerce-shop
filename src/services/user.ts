@@ -34,6 +34,13 @@ export interface UserFullDto extends UserDto {
   userMedia: UserMediaDto[];
 }
 
+export interface UserOrderStatsDto {
+  orderCount: number;
+  completedCount: number;
+  cancelledCount: number;
+  totalSpend: number;
+}
+
 export interface IUpdateUserDto {
   firstName?: string;
   lastName?: string;
@@ -86,6 +93,14 @@ export const userService = {
   getUserWithMedia: (id: string | number, accessToken: string) =>
     sendRequest<IBackendRes<UserFullDto>>({
       url: `${BASE_URL}/user/${id}`,
+      method: "GET",
+      headers: { Authorization: `Bearer ${accessToken}` },
+    }),
+
+  /** Aggregate order stats — one BE call instead of paginating every order */
+  getUserOrderStats: (id: string | number, accessToken: string) =>
+    sendRequest<IBackendRes<UserOrderStatsDto>>({
+      url: `${BASE_URL}/user/${id}/order-stats`,
       method: "GET",
       headers: { Authorization: `Bearer ${accessToken}` },
     }),

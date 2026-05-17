@@ -1,5 +1,26 @@
 // Product Variant DTOs aligned with backend OpenAPI schema
 
+import type { MediaEntity } from "./product";
+
+/**
+ * Minimal parent product fields the variants list endpoint returns nested.
+ */
+export interface ProductSummary {
+  id: number;
+  name: string;
+  stockKeepingUnit: string;
+  categoryId: number | null;
+}
+
+/**
+ * Shape returned by GET /product-variants — variant + its media + nested parent product.
+ * Backend: product-variants.service.findAll() uses include: { media: true, product: true }.
+ */
+export interface ProductVariantWithMediaAndProductEntity extends ProductVariantEntity {
+  media: MediaEntity[];
+  product: ProductSummary;
+}
+
 /**
  * ProductVariantEntity from API
  */

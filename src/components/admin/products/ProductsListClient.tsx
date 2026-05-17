@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef, Suspense } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef, Suspense } from "react";
 import { useSession } from "next-auth/react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import {
   Search,
@@ -16,9 +16,12 @@ import {
 } from "lucide-react";
 import { productService } from "@/services/product";
 import { categoryService } from "@/services/category";
+import { useDebounce } from "@/hooks/useDebounce";
 import type { ProductDto } from "@/dto/product";
 import type { CategoryDto } from "@/dto/category";
 import ProductForm from "@/app/admin/products/_components/ProductForm";
+import ProductVariantsTable from "@/components/admin/products/ProductVariantsTable";
+import RowImage from "@/components/RowImage";
 import {
   Dialog,
   DialogContent,
@@ -33,6 +36,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 
 type FilterTab = "all" | "on_sale" | "out_of_stock";
+type ViewMode = "products" | "variants";
 
 const ROW_HEIGHT = 57;
 const PER_PAGE = 20;
@@ -44,7 +48,25 @@ interface ProductsListClientProps {
 function ProductsListContent({ stockOnlyEdit = false }: ProductsListClientProps) {
   const { data: session } = useSession();
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const accessToken = session?.user?.access_token || "";
+
+  const [view, setView] = useState<ViewMode>(
+    searchParams.get("view") === "variants" ? "variants" : "products"
+  );
+
+  const handleViewChange = (next: ViewMode) => {
+    setView(next);
+    const params = new URLSearchParams(searchParams.toString());
+    if (next === "variants") {
+      params.set("view", "variants");
+    } else {
+      params.delete("view");
+    }
+    const qs = params.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname);
+  };
 
   const [products, setProducts] = useState<ProductDto[]>([]);
   const [categories, setCategories] = useState<CategoryDto[]>([]);
@@ -79,38 +101,52 @@ function ProductsListContent({ stockOnlyEdit = false }: ProductsListClientProps)
 
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
-  const fetchAllProducts = useCallback(async () => {
-    if (!accessToken) return;
-    setLoading(true);
-    setProducts([]);
-    const all: ProductDto[] = [];
-    let page = 1;
-    try {
-      while (true) {
-        console.log("[ProductList] Fetching products page:", page);
-        const res = await productService.getAllProducts({ page, perPage: PER_PAGE, accessToken });
-        const data = res.data ?? [];
-        console.log("[ProductList] Page", page, "→", data.length, "items");
-        if (data.length === 0) break;
-        all.push(...data);
-        if (page === 1) {
-          setProducts(all.slice());
-          setLoading(false);
-          setLoadingMore(true);
-        } else {
-          setProducts(all.slice());
+  // Debounced search → server-side filter. requestTokenRef cancels stale loops
+  // when the user types faster than the network can keep up.
+  const debouncedSearch = useDebounce(searchQuery, 300);
+  const requestTokenRef = useRef(0);
+
+  const fetchAllProducts = useCallback(
+    async (search: string) => {
+      if (!accessToken) return;
+      const token = ++requestTokenRef.current;
+      setLoading(true);
+      setProducts([]);
+      const all: ProductDto[] = [];
+      let page = 1;
+      try {
+        while (true) {
+          const res = await productService.getAllProducts({
+            page,
+            perPage: PER_PAGE,
+            search,
+            accessToken,
+          });
+          if (token !== requestTokenRef.current) return;
+          const data = res.data ?? [];
+          if (data.length === 0) break;
+          all.push(...data);
+          if (page === 1) {
+            setProducts(all.slice());
+            setLoading(false);
+            setLoadingMore(true);
+          } else {
+            setProducts(all.slice());
+          }
+          if (data.length < PER_PAGE) break;
+          page += 1;
         }
-        if (data.length < PER_PAGE) break;
-        page += 1;
+      } catch (err) {
+        console.log("[ProductList] Error fetching products:", err);
+      } finally {
+        if (token === requestTokenRef.current) {
+          setLoading(false);
+          setLoadingMore(false);
+        }
       }
-      console.log("[ProductList] Done. Total:", all.length);
-    } catch (err) {
-      console.log("[ProductList] Error fetching products:", err);
-    } finally {
-      setLoading(false);
-      setLoadingMore(false);
-    }
-  }, [accessToken]);
+    },
+    [accessToken]
+  );
 
   const fetchProductsByCategory = useCallback(
     async (categoryId: number) => {
@@ -146,17 +182,26 @@ function ProductsListContent({ stockOnlyEdit = false }: ProductsListClientProps)
   useEffect(() => {
     if (!accessToken) return;
     if (activeCategoryId !== null) {
+      // Category-scoped fetch doesn't accept a server-side search yet — text
+      // filtering falls back to client-side over the category's result set
+      // inside `searchedProducts` below.
       fetchProductsByCategory(activeCategoryId);
     } else {
-      fetchAllProducts();
+      fetchAllProducts(debouncedSearch);
     }
-  }, [accessToken, activeCategoryId, fetchAllProducts, fetchProductsByCategory]);
+  }, [
+    accessToken,
+    activeCategoryId,
+    debouncedSearch,
+    fetchAllProducts,
+    fetchProductsByCategory,
+  ]);
 
   const handleProductSaved = useCallback(() => {
     setProductModalOpen(false);
     setEditingProductId(null);
-    fetchAllProducts();
-  }, [fetchAllProducts]);
+    fetchAllProducts(debouncedSearch);
+  }, [fetchAllProducts, debouncedSearch]);
 
   const handleCategoryClick = (categoryId: number) => {
     setActiveCategoryId(activeCategoryId === categoryId ? null : categoryId);
@@ -225,15 +270,22 @@ function ProductsListContent({ stockOnlyEdit = false }: ProductsListClientProps)
     return now >= new Date(p.voucher.validFrom).getTime() && now <= new Date(p.voucher.validTo).getTime();
   };
 
-  const filteredProducts = products.filter((p) => {
-    if (activeTab === "out_of_stock") return p.stock === 0;
-    if (activeTab === "on_sale") return isVoucherActive(p);
-    return true;
-  });
+  const filteredProducts = useMemo(
+    () =>
+      products.filter((p) => {
+        if (activeTab === "out_of_stock") return p.stock === 0;
+        if (activeTab === "on_sale") return isVoucherActive(p);
+        return true;
+      }),
+    [products, activeTab]
+  );
 
-  const searchedProducts = searchQuery
-    ? filteredProducts.filter((p) => p.name.toLowerCase().includes(searchQuery.toLowerCase()))
-    : filteredProducts;
+  const searchedProducts = useMemo(() => {
+    // Server already filtered when no category is selected — skip client-side text filter
+    if (activeCategoryId === null || !searchQuery) return filteredProducts;
+    const q = searchQuery.toLowerCase();
+    return filteredProducts.filter((p) => p.name.toLowerCase().includes(q));
+  }, [filteredProducts, searchQuery, activeCategoryId]);
 
   const rowVirtualizer = useVirtualizer({
     count: searchedProducts.length,
@@ -247,7 +299,7 @@ function ProductsListContent({ stockOnlyEdit = false }: ProductsListClientProps)
     : "48px 2fr 1fr 120px 80px 80px 110px 88px";
 
   return (
-    <div className="h-screen p-6 flex flex-col overflow-hidden">
+    <div className="h-screen p-3 sm:p-4 md:p-6 flex flex-col overflow-hidden">
       {/* Delete Confirmation Dialog */}
       {!stockOnlyEdit && deleteConfirmId !== null && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -263,8 +315,8 @@ function ProductsListContent({ stockOnlyEdit = false }: ProductsListClientProps)
       )}
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-3 flex-shrink-0">
-        <h1 className="text-2xl font-bold text-[#151515]">Danh sách sản phẩm</h1>
+      <div className="flex items-center justify-between mb-3 flex-shrink-0 gap-2">
+        <h1 className="text-xl sm:text-2xl font-bold text-[#151515]">Danh sách sản phẩm</h1>
         {!stockOnlyEdit && (
           <Button onClick={openCreateModal} className="gap-2 cursor-pointer">
             <PlusSquare size={18} />
@@ -273,59 +325,90 @@ function ProductsListContent({ stockOnlyEdit = false }: ProductsListClientProps)
         )}
       </div>
 
-      {/* Category Chips */}
-      <div className="flex items-center gap-2 mb-3 flex-shrink-0 overflow-x-auto pb-1">
-        {!stockOnlyEdit && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setAddCategoryOpen(true)}
-            className="flex-shrink-0 gap-1.5 cursor-pointer border-dashed"
-          >
-            <Plus size={14} />
-            Thêm
-          </Button>
-        )}
-        {activeCategoryId !== null && (
-          <Button variant="ghost" size="sm" onClick={clearCategoryFilter} className="flex-shrink-0 gap-1 cursor-pointer">
-            <X size={12} />
-            Bỏ lọc
-          </Button>
-        )}
-        {categories.map((cat) => (
-          <Button
-            key={cat.id}
-            size="sm"
-            variant={activeCategoryId === cat.id ? "default" : "outline"}
-            onClick={() => handleCategoryClick(cat.id)}
-            className="flex-shrink-0 cursor-pointer"
-          >
-            {cat.name}
-          </Button>
-        ))}
-      </div>
-
       {/* Product Table Card */}
       <div className="bg-white shadow rounded-lg flex flex-col flex-1 min-h-0 overflow-hidden">
-        <div className="flex items-center justify-between px-4 pt-3 pb-2 flex-shrink-0">
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as FilterTab)}>
-            <TabsList className="bg-[var(--admin-green-light)]">
-              <TabsTrigger value="all" className="cursor-pointer">Tất cả sản phẩm</TabsTrigger>
-              <TabsTrigger value="on_sale" className="cursor-pointer">Đang giảm giá</TabsTrigger>
-              <TabsTrigger value="out_of_stock" className="cursor-pointer">Hết hàng</TabsTrigger>
-            </TabsList>
+        {/* View switcher — products vs variants */}
+        <div className="px-3 sm:px-4 pt-3 flex-shrink-0">
+          <Tabs value={view} onValueChange={(v) => handleViewChange(v as ViewMode)}>
+            <div className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <TabsList className="bg-[var(--admin-green-light)] w-max">
+                <TabsTrigger value="products" className="cursor-pointer">Sản phẩm</TabsTrigger>
+                <TabsTrigger value="variants" className="cursor-pointer">Biến thể sản phẩm</TabsTrigger>
+              </TabsList>
+            </div>
           </Tabs>
-          <div className="relative">
+        </div>
+
+        {/* Category Chips — only in the products view, kept inside the card so the
+            switcher position doesn't shift when toggling views. */}
+        {view === "products" && (
+          <div className="flex items-center gap-2 px-3 sm:px-4 pt-3 flex-shrink-0 overflow-x-auto pb-1">
+            {!stockOnlyEdit && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setAddCategoryOpen(true)}
+                className="flex-shrink-0 gap-1.5 cursor-pointer border-dashed"
+              >
+                <Plus size={14} />
+                Thêm
+              </Button>
+            )}
+            {activeCategoryId !== null && (
+              <Button variant="ghost" size="sm" onClick={clearCategoryFilter} className="flex-shrink-0 gap-1 cursor-pointer">
+                <X size={12} />
+                Bỏ lọc
+              </Button>
+            )}
+            {categories.map((cat) => (
+              <Button
+                key={cat.id}
+                size="sm"
+                variant={activeCategoryId === cat.id ? "default" : "outline"}
+                onClick={() => handleCategoryClick(cat.id)}
+                className="flex-shrink-0 cursor-pointer"
+              >
+                {cat.name}
+              </Button>
+            ))}
+          </div>
+        )}
+
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 px-3 sm:px-4 pt-3 pb-2 flex-shrink-0">
+          {view === "products" ? (
+            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as FilterTab)}>
+              <div className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                <TabsList className="bg-[var(--admin-green-light)] w-max">
+                  <TabsTrigger value="all" className="cursor-pointer">Tất cả sản phẩm</TabsTrigger>
+                  <TabsTrigger value="on_sale" className="cursor-pointer">Đang giảm giá</TabsTrigger>
+                  <TabsTrigger value="out_of_stock" className="cursor-pointer">Hết hàng</TabsTrigger>
+                </TabsList>
+              </div>
+            </Tabs>
+          ) : (
+            <div />
+          )}
+          <div className="relative w-full md:w-auto">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
             <Input
               placeholder="Tìm kiếm..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 bg-gray-100 text-sm w-56"
+              className="pl-9 bg-gray-100 text-sm w-full md:w-56"
             />
           </div>
         </div>
 
+        {view === "variants" ? (
+          <ProductVariantsTable
+            stockOnlyEdit={stockOnlyEdit}
+            searchQuery={searchQuery}
+            accessToken={accessToken}
+            onEditVariant={openEditModal}
+          />
+        ) : (
+        <div className="flex-1 flex flex-col min-h-0 overflow-x-auto">
+          <div className="min-w-[1000px] flex flex-col flex-1 min-h-0">
         {/* Table Header */}
         <div className="grid bg-[var(--admin-green-light)] flex-shrink-0" style={{ gridTemplateColumns: gridCols }}>
           <div className="px-3 py-3 text-sm font-semibold text-[var(--admin-green-dark)]">STT</div>
@@ -366,7 +449,6 @@ function ProductsListContent({ stockOnlyEdit = false }: ProductsListClientProps)
                   <div
                     key={product.id}
                     data-index={virtualRow.index}
-                    ref={rowVirtualizer.measureElement}
                     onClick={() => openEditModal(product.id)}
                     className="grid border-t border-gray-100 hover:bg-gray-50 cursor-pointer items-center"
                     style={{
@@ -382,11 +464,7 @@ function ProductsListContent({ stockOnlyEdit = false }: ProductsListClientProps)
                     <div className="px-3 py-3">
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 border border-gray-200 bg-gray-100 flex items-center justify-center flex-shrink-0 overflow-hidden rounded-md">
-                          {imgUrl ? (
-                            <img src={imgUrl} alt={product.name} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).src = "/no-image.jpg"; }} />
-                          ) : (
-                            <div className="w-full h-full bg-gray-200" />
-                          )}
+                          <RowImage src={imgUrl} alt={product.name} />
                         </div>
                         <div className="min-w-0">
                           <p className="text-sm font-medium text-gray-900 truncate">{product.name}</p>
@@ -427,12 +505,15 @@ function ProductsListContent({ stockOnlyEdit = false }: ProductsListClientProps)
             </div>
           )}
         </div>
+          </div>
+        </div>
+        )}
       </div>
 
       {/* Product modal */}
       <Dialog open={productModalOpen} onOpenChange={(open) => { if (!open) { setProductModalOpen(false); setEditingProductId(null); } }}>
-        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-2xl md:max-w-4xl lg:max-w-6xl xl:max-w-[1400px] max-h-[90vh] overflow-y-auto p-0">
-          <DialogHeader className="px-6 pt-6 pb-2">
+        <DialogContent className="w-[95vw] !max-w-[min(95vw,1400px)] max-h-[90vh] overflow-y-auto overflow-x-hidden p-0">
+          <DialogHeader className="px-6 pt-6 pb-2 min-w-0">
             <DialogTitle>
               {editingProductId
                 ? stockOnlyEdit ? "Cập nhật tồn kho" : "Chỉnh sửa sản phẩm"
