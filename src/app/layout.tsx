@@ -18,8 +18,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "BK-Ecommerce-shop",
-  description: "BK Ecommerce shop project",
+  title: "Paple",
+  description: "Paple",
 };
 
 export default function RootLayout({
