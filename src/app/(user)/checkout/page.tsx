@@ -16,6 +16,7 @@ import { shipmentService } from "@/services/shipment";
 import { userService } from "@/services/user";
 import { paymentService } from "@/services/payment";
 import AddressModal from "@/components/profile/AddressModal";
+import { useCart } from "@/components/cart/CartContext";
 import type { CartItemWithDetails } from "@/dto/cart-api";
 import { mapCartItemToDetails } from "@/dto/cart-api";
 import type {
@@ -108,6 +109,7 @@ function CheckoutContent() {
   const { data: session, status: sessionStatus } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { refreshCart } = useCart();
   const isBuyNow = searchParams.get("buyNow") === "1";
   const selectedItemIdsParam = searchParams.get("items") || "";
   const selectedItemIds = selectedItemIdsParam
@@ -457,6 +459,10 @@ function CheckoutContent() {
             cartService.deleteCartItem(item.id, session.user.access_token!),
           ),
       );
+
+      // Cart is now empty on the server; refresh the badge before navigating
+      // away so the header icon doesn't carry stale state into the next page.
+      await refreshCart();
 
       if (paymentMethod === "VNPAY") {
         // VNPay: generate payment URL and redirect to gateway
