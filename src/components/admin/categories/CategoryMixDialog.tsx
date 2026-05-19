@@ -87,7 +87,7 @@ export default function CategoryMixDialog({
         {
           baseCategoryId: category.id,
           suggestCategoryIds: Array.from(selectedIds),
-          symmetric: true,
+          symmetric: false,
         },
         accessToken,
       );
@@ -116,8 +116,8 @@ export default function CategoryMixDialog({
 
         <div className="py-2">
           <p className="text-sm text-gray-500 mb-3">
-            Chọn các danh mục muốn mix với danh mục này. Việc lưu sẽ tự động đồng
-            bộ hai chiều.
+            Chọn các danh mục muốn gợi ý mix khi khách xem danh mục này. Chỉ
+            áp dụng một chiều — danh mục khác sẽ không tự động gợi ý ngược lại.
           </p>
 
           {loading ? (

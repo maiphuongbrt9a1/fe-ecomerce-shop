@@ -83,15 +83,14 @@ export default function CategoryMixMatrixSheet({
     if (rowId === colId) return;
     setPairs((prev) => {
       const next = new Set(prev);
-      const k1 = pairKey(rowId, colId);
-      const k2 = pairKey(colId, rowId);
-      // Symmetric: flip both directions together.
-      if (next.has(k1) || next.has(k2)) {
-        next.delete(k1);
-        next.delete(k2);
+      const key = pairKey(rowId, colId);
+      // Asymmetric: each cell is its own independent direction.
+      // (row, col) means "when viewing row, recommend col" — the reverse
+      // (col, row) is configured separately.
+      if (next.has(key)) {
+        next.delete(key);
       } else {
-        next.add(k1);
-        next.add(k2);
+        next.add(key);
       }
       return next;
     });
@@ -188,8 +187,8 @@ export default function CategoryMixMatrixSheet({
             Ma trận gợi ý mix
           </DialogTitle>
           <DialogDescription>
-            Bấm vào ô để bật/tắt gợi ý. Hai chiều được đồng bộ tự động — ô
-            (A, B) và (B, A) luôn cùng trạng thái.
+            Mỗi ô là một chiều độc lập: ô (hàng A, cột B) nghĩa là "khi xem
+            A, gợi ý mix với B". Chiều ngược lại (B → A) cần cấu hình riêng.
           </DialogDescription>
           <div className="flex items-center justify-between gap-3 pt-2">
             <span className="text-xs text-gray-500">
