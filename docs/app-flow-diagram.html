@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<title>Sơ đồ luồng ứng dụng — e-commerce</title>
+<style>
+  :root {
+    --bg: #EFEAE2;
+    --node-bg: #FFFFFF;
+    --node-border: #C9C2B5;
+    --title: #1A1A1A;
+    --route: #6A6A6A;
+    --arrow: #2F2F2F;
+    --arrow-soft: #6B6B6B;
+    --label: #2F2F2F;
+    --label-bg: #FFFFFF;
+    --stripe-store: #2C5F5D;
+    --stripe-user:  #574A75;
+    --stripe-auth:  #B05538;
+    --stripe-admin: #7E3140;
+    --stripe-staff: #3F6B4E;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: #DAD3C5;
+    font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+    color: var(--title);
+  }
+  body {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+  .frame {
+    width: 100%;
+    max-width: 1920px;
+    aspect-ratio: 16 / 9;
+    background: var(--bg);
+    border-radius: 0;
+    box-shadow: 0 10px 50px rgba(0,0,0,0.12);
+  }
+  svg { display: block; width: 100%; height: 100%; border-radius: 0; }
+  svg rect { rx: 0; ry: 0; }
+</style>
+</head>
+<body>
+<div class="frame">
+<svg viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#2F2F2F"/>
+    </marker>
+    <marker id="arrow-soft" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#6B6B6B"/>
+    </marker>
+
+    <style>
+      .panel  { fill-opacity: 0.55; stroke: none; }
+      .panel-label {
+        font-size: 12px; font-weight: 700; letter-spacing: 1.6px;
+        text-transform: uppercase; fill: #3A3A3A;
+      }
+      .node-bg     { fill: #FFFFFF; stroke: #C9C2B5; stroke-width: 1; }
+      .node-bg.dashed { stroke-dasharray: 4 4; }
+      .node-title  { font-size: 14px; font-weight: 700; fill: #1A1A1A; }
+      .node-title.lg { font-size: 15px; }
+      .node-route  { font-size: 11px; fill: #6A6A6A;
+                     font-family: "JetBrains Mono","Consolas",monospace; }
+
+      .stripe-store { fill: #2C5F5D; }
+      .stripe-user  { fill: #574A75; }
+      .stripe-auth  { fill: #B05538; }
+      .stripe-admin { fill: #7E3140; }
+      .stripe-staff { fill: #3F6B4E; }
+
+      .edge      { fill: none; stroke: #2F2F2F; stroke-width: 1.6; }
+      .edge.soft { stroke: #6B6B6B; stroke-width: 1.2; }
+      .edge.dashed { stroke-dasharray: 5 4; }
+
+      .lbl    { font-size: 11px; font-style: italic; fill: #2F2F2F; }
+      .lbl.sm { font-size: 10px; }
+      .lbl-bg { fill: #FFFFFF; }
+
+      .title-main { font-size: 22px; font-weight: 800; fill: #1A1A1A; letter-spacing: 0.3px; }
+      .title-sub  { font-size: 12px; fill: #555; letter-spacing: 0.6px; }
+    </style>
+  </defs>
+
+  <!-- ================= TITLE ================= -->
+  <text class="title-main" x="32" y="46">Sơ đồ luồng ứng dụng — e-commerce shop</text>
+  <text class="title-sub"  x="32" y="68">Mỗi mũi tên là một hành động hoặc điều kiện chuyển trang · 26 trang ứng dụng + middleware phân quyền</text>
+
+  <!-- ================= PANELS ================= -->
+  <rect class="panel" x="16" y="92"  width="1888" height="218" fill="#D6CFB8"/>
+  <text class="panel-label" x="32" y="114">Cửa hàng &amp; Mua hàng</text>
+
+  <rect class="panel" x="16" y="324" width="1888" height="118" fill="#CFC8D6"/>
+  <text class="panel-label" x="32" y="346">Tài khoản người dùng</text>
+
+  <rect class="panel" x="16" y="456" width="1888" height="138" fill="#D8C8BC"/>
+  <text class="panel-label" x="32" y="478">Xác thực</text>
+
+  <rect class="panel" x="16" y="608" width="1296" height="456" fill="#D2C2C8"/>
+  <text class="panel-label" x="32" y="630">Quản trị — Admin · truy cập qua sidebar /admin/*</text>
+
+  <rect class="panel" x="1324" y="608" width="580" height="456" fill="#C8D4C8"/>
+  <text class="panel-label" x="1340" y="630">Nhân viên — Staff · /staff/*</text>
+
+  <!-- ================= STOREFRONT NODES ================= -->
+  <!-- Row 1 -->
+  <g transform="translate(40,150)">
+    <rect class="node-bg" width="200" height="62"/><rect class="stripe-store" width="6" height="62"/>
+    <text class="node-title lg" x="18" y="28">Trang chủ</text>
+    <text class="node-route" x="18" y="48">/homepage</text>
+  </g>
+  <g transform="translate(290,150)">
+    <rect class="node-bg" width="200" height="62"/><rect class="stripe-store" width="6" height="62"/>
+    <text class="node-title lg" x="18" y="28">Tìm kiếm</text>
+    <text class="node-route" x="18" y="48">/search</text>
+  </g>
+  <g transform="translate(540,150)">
+    <rect class="node-bg" width="200" height="62"/><rect class="stripe-store" width="6" height="62"/>
+    <text class="node-title lg" x="18" y="28">Chi tiết sản phẩm</text>
+    <text class="node-route" x="18" y="48">/product/[id]</text>
+  </g>
+  <g transform="translate(790,150)">
+    <rect class="node-bg" width="200" height="62"/><rect class="stripe-store" width="6" height="62"/>
+    <text class="node-title lg" x="18" y="28">Giỏ hàng</text>
+    <text class="node-route" x="18" y="48">/cart</text>
+  </g>
+  <g transform="translate(1040,150)">
+    <rect class="node-bg" width="200" height="62"/><rect class="stripe-store" width="6" height="62"/>
+    <text class="node-title lg" x="18" y="28">Thanh toán</text>
+    <text class="node-route" x="18" y="48">/checkout</text>
+  </g>
+  <g transform="translate(1290,150)">
+    <rect class="node-bg" width="280" height="62"/><rect class="stripe-store" width="6" height="62"/>
+    <text class="node-title lg" x="18" y="28">Chi tiết đơn hàng</text>
+    <text class="node-route" x="18" y="48">/profile/orders/[id]</text>
+  </g>
+  <!-- Row 2 -->
+  <g transform="translate(1040,238)">
+    <rect class="node-bg" width="240" height="62"/><rect class="stripe-store" width="6" height="62"/>
+    <text class="node-title lg" x="18" y="28">Trả về VNPay</text>
+    <text class="node-route" x="18" y="48">/checkout/vnpay-return</text>
+  </g>
+
+  <!-- ================= USER ACCOUNT NODES ================= -->
+  <g transform="translate(40,360)">
+    <rect class="node-bg" width="200" height="62"/><rect class="stripe-user" width="6" height="62"/>
+    <text class="node-title lg" x="18" y="28">Hồ sơ</text>
+    <text class="node-route" x="18" y="48">/profile</text>
+  </g>
+  <g transform="translate(290,360)">
+    <rect class="node-bg" width="200" height="62"/><rect class="stripe-user" width="6" height="62"/>
+    <text class="node-title lg" x="18" y="28">Thông báo</text>
+    <text class="node-route" x="18" y="48">/profile/notifications</text>
+  </g>
+  <g transform="translate(540,360)">
+    <rect class="node-bg" width="200" height="62"/><rect class="stripe-user" width="6" height="62"/>
+    <text class="node-title lg" x="18" y="28">Danh sách đơn</text>
+    <text class="node-route" x="18" y="48">/profile/orders</text>
+  </g>
+  <g transform="translate(790,360)">
+    <rect class="node-bg" width="200" height="62"/><rect class="stripe-user" width="6" height="62"/>
+    <text class="node-title lg" x="18" y="28">Voucher của tôi</text>
+    <text class="node-route" x="18" y="48">/profile/vouchers</text>
+  </g>
+
+  <!-- ================= AUTH NODES (5 in one row) ================= -->
+  <g transform="translate(40,500)">
+    <rect class="node-bg" width="200" height="62"/><rect class="stripe-auth" width="6" height="62"/>
+    <text class="node-title lg" x="18" y="28">Đăng nhập</text>
+    <text class="node-route" x="18" y="48">/auth/login</text>
+  </g>
+  <g transform="translate(290,500)">
+    <rect class="node-bg" width="200" height="62"/><rect class="stripe-auth" width="6" height="62"/>
+    <text class="node-title lg" x="18" y="28">Đăng ký</text>
+    <text class="node-route" x="18" y="48">/auth/signup</text>
+  </g>
+  <g transform="translate(540,500)">
+    <rect class="node-bg" width="200" height="62"/><rect class="stripe-auth" width="6" height="62"/>
+    <text class="node-title lg" x="18" y="28">Xác thực tài khoản</text>
+    <text class="node-route" x="18" y="48">/auth/verify/[id]</text>
+  </g>
+  <g transform="translate(790,500)">
+    <rect class="node-bg" width="200" height="62"/><rect class="stripe-auth" width="6" height="62"/>
+    <text class="node-title lg" x="18" y="28">Quên mật khẩu</text>
+    <text class="node-route" x="18" y="48">/auth/forgot-password</text>
+  </g>
+  <g transform="translate(1040,500)">
+    <rect class="node-bg" width="200" height="62"/><rect class="stripe-auth" width="6" height="62"/>
+    <text class="node-title lg" x="18" y="28">Đổi mật khẩu</text>
+    <text class="node-route" x="18" y="48">/auth/change-password</text>
+  </g>
+
+  <!-- ================= ADMIN GRID (6 cols × 3 rows) ================= -->
+  <!-- Cols x: 40, 252, 464, 676, 888, 1100  (W=200, gap=12)
+       Rows y: 670, 760, 850, 940  (every 90) -->
+
+  <!-- ROW 1 -->
+  <g transform="translate(40,670)">
+    <rect class="node-bg" width="200" height="62"/><rect class="stripe-admin" width="6" height="62"/>
+    <text class="node-title" x="18" y="27">Bảng điều khiển</text>
+    <text class="node-route" x="18" y="48">/admin</text>
+  </g>
+  <g transform="translate(252,670)">
+    <rect class="node-bg" width="200" height="62"/><rect class="stripe-admin" width="6" height="62"/>
+    <text class="node-title" x="18" y="27">Quản lý đơn hàng</text>
+    <text class="node-route" x="18" y="48">/admin/orders</text>
+  </g>
+  <g transform="translate(464,670)">
+    <rect class="node-bg" width="200" height="62"/><rect class="stripe-admin" width="6" height="62"/>
+    <text class="node-title" x="18" y="27">Khách hàng</text>
+    <text class="node-route" x="18" y="48">/admin/users</text>
+  </g>
+  <g transform="translate(676,670)">
+    <rect class="node-bg" width="200" height="62"/><rect class="stripe-admin" width="6" height="62"/>
+    <text class="node-title" x="18" y="27">Danh mục</text>
+    <text class="node-route" x="18" y="48">/admin/categories</text>
+  </g>
+  <g transform="translate(888,670)">
+    <rect class="node-bg" width="200" height="62"/><rect class="stripe-admin" width="6" height="62"/>
+    <text class="node-title" x="18" y="27">Hộp thoại / Chat</text>
+    <text class="node-route" x="18" y="48">/admin/chat</text>
+  </g>
+  <g transform="translate(1100,670)">
+    <rect class="node-bg" width="200" height="62"/><rect class="stripe-admin" width="6" height="62"/>
+    <text class="node-title" x="18" y="27">Mã giảm giá</text>
+    <text class="node-route" x="18" y="48">/admin/coupons</text>
+  </g>
+
+  <!-- ROW 2 -->
+  <g transform="translate(40,760)">
+    <rect class="node-bg" width="200" height="62"/><rect class="stripe-admin" width="6" height="62"/>
+    <text class="node-title" x="18" y="27">DS sản phẩm</text>
+    <text class="node-route" x="18" y="48">/admin/products/list</text>
+  </g>
+  <g transform="translate(252,760)">
+    <rect class="node-bg" width="200" height="62"/><rect class="stripe-admin" width="6" height="62"/>
+    <text class="node-title" x="18" y="27">Thêm sản phẩm</text>
+    <text class="node-route" x="18" y="48">/admin/products/add</text>
+  </g>
+  <g transform="translate(464,760)">
+    <rect class="node-bg" width="200" height="62"/><rect class="stripe-admin" width="6" height="62"/>
+    <text class="node-title" x="18" y="27">Sửa sản phẩm</text>
+    <text class="node-route" x="18" y="48">/admin/products/edit/[id]</text>
+  </g>
+  <g transform="translate(676,760)">
+    <rect class="node-bg" width="200" height="62"/><rect class="stripe-admin" width="6" height="62"/>
+    <text class="node-title" x="18" y="27">Đánh giá SP</text>
+    <text class="node-route" x="18" y="48">/admin/products/reviews</text>
+  </g>
+  <g transform="translate(888,760)">
+    <rect class="node-bg" width="200" height="62"/><rect class="stripe-admin" width="6" height="62"/>
+    <text class="node-title" x="18" y="27">Thư viện ảnh SP</text>
+    <text class="node-route" x="18" y="48">/admin/products/media</text>
+  </g>
+  <g transform="translate(1100,760)">
+    <rect class="node-bg" width="200" height="62"/><rect class="stripe-admin" width="6" height="62"/>
+    <text class="node-title" x="18" y="27">Thương hiệu</text>
+    <text class="node-route" x="18" y="48">/admin/brands</text>
+  </g>
+
+  <!-- ROW 3 -->
+  <g transform="translate(40,850)">
+    <rect class="node-bg" width="200" height="62"/><rect class="stripe-admin" width="6" height="62"/>
+    <text class="node-title" x="18" y="27">Phân quyền</text>
+    <text class="node-route" x="18" y="48">/admin/authority</text>
+  </g>
+  <g transform="translate(252,850)">
+    <rect class="node-bg" width="200" height="62"/><rect class="stripe-admin" width="6" height="62"/>
+    <text class="node-title" x="18" y="27">Vai trò</text>
+    <text class="node-route" x="18" y="48">/admin/roles</text>
+  </g>
+  <g transform="translate(464,850)">
+    <rect class="node-bg" width="200" height="62"/><rect class="stripe-admin" width="6" height="62"/>
+    <text class="node-title" x="18" y="27">Cửa hàng</text>
+    <text class="node-route" x="18" y="48">/admin/shop</text>
+  </g>
+  <g transform="translate(676,850)">
+    <rect class="node-bg" width="200" height="62"/><rect class="stripe-admin" width="6" height="62"/>
+    <text class="node-title" x="18" y="27">Giao dịch</text>
+    <text class="node-route" x="18" y="48">/admin/transactions</text>
+  </g>
+  <g transform="translate(888,850)">
+    <rect class="node-bg" width="200" height="62"/><rect class="stripe-admin" width="6" height="62"/>
+    <text class="node-title" x="18" y="27">Hồ sơ admin</text>
+    <text class="node-route" x="18" y="48">/admin/profile</text>
+  </g>
+
+  <!-- Hub indicator: "Sidebar Admin" -->
+  <g transform="translate(1100,850)">
+    <rect class="node-bg dashed" width="200" height="62"/><rect class="stripe-admin" width="6" height="62"/>
+    <text class="node-title" x="18" y="27">Sidebar Admin</text>
+    <text class="node-route" x="18" y="48">điều hướng nội bộ</text>
+  </g>
+
+  <!-- ================= STAFF GRID (3 cols × 3 rows) ================= -->
+  <!-- Cols x: 1340, 1530, 1720 (W=180, gap=10)
+       Rows y: 670, 760, 850 -->
+
+  <g transform="translate(1340,670)">
+    <rect class="node-bg" width="180" height="62"/><rect class="stripe-staff" width="6" height="62"/>
+    <text class="node-title" x="18" y="27">Bảng điều khiển</text>
+    <text class="node-route" x="18" y="48">/staff</text>
+  </g>
+  <g transform="translate(1530,670)">
+    <rect class="node-bg" width="180" height="62"/><rect class="stripe-staff" width="6" height="62"/>
+    <text class="node-title" x="18" y="27">Quản lý đơn hàng</text>
+    <text class="node-route" x="18" y="48">/staff/orders</text>
+  </g>
+  <g transform="translate(1720,670)">
+    <rect class="node-bg" width="180" height="62"/><rect class="stripe-staff" width="6" height="62"/>
+    <text class="node-title" x="18" y="27">Khách hàng</text>
+    <text class="node-route" x="18" y="48">/staff/users</text>
+  </g>
+
+  <g transform="translate(1340,760)">
+    <rect class="node-bg" width="180" height="62"/><rect class="stripe-staff" width="6" height="62"/>
+    <text class="node-title" x="18" y="27">Danh mục</text>
+    <text class="node-route" x="18" y="48">/staff/categories</text>
+  </g>
+  <g transform="translate(1530,760)">
+    <rect class="node-bg" width="180" height="62"/><rect class="stripe-staff" width="6" height="62"/>
+    <text class="node-title" x="18" y="27">Hộp thoại / Chat</text>
+    <text class="node-route" x="18" y="48">/staff/chat</text>
+  </g>
+  <g transform="translate(1720,760)">
+    <rect class="node-bg" width="180" height="62"/><rect class="stripe-staff" width="6" height="62"/>
+    <text class="node-title" x="18" y="27">Mã giảm giá</text>
+    <text class="node-route" x="18" y="48">/staff/coupons</text>
+  </g>
+
+  <g transform="translate(1340,850)">
+    <rect class="node-bg" width="180" height="62"/><rect class="stripe-staff" width="6" height="62"/>
+    <text class="node-title" x="18" y="27">DS sản phẩm</text>
+    <text class="node-route" x="18" y="48">/staff/products/list</text>
+  </g>
+  <g transform="translate(1530,850)">
+    <rect class="node-bg" width="180" height="62"/><rect class="stripe-staff" width="6" height="62"/>
+    <text class="node-title" x="18" y="27">Đánh giá SP</text>
+    <text class="node-route" x="18" y="48">/staff/products/reviews</text>
+  </g>
+  <g transform="translate(1720,850)">
+    <rect class="node-bg" width="180" height="62"/><rect class="stripe-staff" width="6" height="62"/>
+    <text class="node-title" x="18" y="27">Hồ sơ staff</text>
+    <text class="node-route" x="18" y="48">/staff/profile</text>
+  </g>
+
+  <!-- =============================================== -->
+  <!-- ============== EDGES (ARROWS) ================ -->
+  <!-- =============================================== -->
+
+  <!-- Storefront horizontal flow (y ~ 181) -->
+  <path class="edge" d="M240,181 L290,181" marker-end="url(#arrow)"/>
+  <rect class="lbl-bg" x="241" y="166" width="48" height="13"/>
+  <text class="lbl" x="265" y="177" text-anchor="middle">tìm kiếm</text>
+
+  <path class="edge" d="M490,181 L540,181" marker-end="url(#arrow)"/>
+  <rect class="lbl-bg" x="490" y="166" width="50" height="13"/>
+  <text class="lbl" x="515" y="177" text-anchor="middle">chọn SP</text>
+
+  <path class="edge" d="M740,181 L790,181" marker-end="url(#arrow)"/>
+  <rect class="lbl-bg" x="736" y="166" width="58" height="13"/>
+  <text class="lbl" x="765" y="177" text-anchor="middle">thêm giỏ</text>
+
+  <path class="edge" d="M990,181 L1040,181" marker-end="url(#arrow)"/>
+  <rect class="lbl-bg" x="988" y="166" width="54" height="13"/>
+  <text class="lbl" x="1015" y="177" text-anchor="middle">thanh toán</text>
+
+  <path class="edge" d="M1240,181 L1290,181" marker-end="url(#arrow)"/>
+  <rect class="lbl-bg" x="1228" y="166" width="62" height="13"/>
+  <text class="lbl" x="1262" y="177" text-anchor="middle">đặt thành công</text>
+
+  <!-- "Mua ngay": Chi tiết SP → Thanh toán (curve above) -->
+  <path class="edge" d="M640,150 C 720,108 960,108 1140,150" marker-end="url(#arrow)"/>
+  <rect class="lbl-bg" x="846" y="100" width="138" height="13"/>
+  <text class="lbl" x="918" y="111" text-anchor="middle">người dùng nhấn "Mua ngay"</text>
+
+  <!-- Thanh toán → VNPay -->
+  <path class="edge" d="M1140,212 L1140,238" marker-end="url(#arrow)"/>
+  <rect class="lbl-bg" x="1148" y="220" width="74" height="13"/>
+  <text class="lbl" x="1156" y="231">chọn VNPay</text>
+
+  <!-- VNPay → Chi tiết đơn (success) -->
+  <path class="edge" d="M1280,269 L1340,269 L1340,212" marker-end="url(#arrow)"/>
+  <rect class="lbl-bg" x="1284" y="262" width="116" height="13"/>
+  <text class="lbl" x="1342" y="273" text-anchor="middle">thanh toán thành công</text>
+
+  <!-- VNPay → Giỏ hàng (failed) -->
+  <path class="edge" d="M1040,269 L900,269 L900,212" marker-end="url(#arrow)"/>
+  <rect class="lbl-bg" x="908" y="262" width="100" height="13"/>
+  <text class="lbl" x="958" y="273" text-anchor="middle">thanh toán thất bại</text>
+
+  <!-- Trang chủ → Hồ sơ -->
+  <path class="edge" d="M140,212 L140,360" marker-end="url(#arrow)"/>
+  <rect class="lbl-bg" x="148" y="276" width="186" height="13"/>
+  <text class="lbl" x="156" y="287">nhấn avatar → "Thông tin cá nhân"</text>
+
+  <!-- Hồ sơ → siblings -->
+  <path class="edge" d="M240,391 L290,391" marker-end="url(#arrow)"/>
+  <path class="edge" d="M490,391 L540,391" marker-end="url(#arrow)"/>
+  <path class="edge" d="M740,391 L790,391" marker-end="url(#arrow)"/>
+  <rect class="lbl-bg" x="248" y="376" width="178" height="13"/>
+  <text class="lbl" x="337" y="387" text-anchor="middle">các tab trong trang Hồ sơ</text>
+
+  <!-- Đơn hàng → Chi tiết đơn -->
+  <path class="edge" d="M640,360 L640,332 L1410,332 L1410,212" marker-end="url(#arrow)"/>
+  <rect class="lbl-bg" x="980" y="319" width="142" height="13"/>
+  <text class="lbl" x="1052" y="330" text-anchor="middle">nhấn vào một đơn hàng</text>
+
+  <!-- Voucher → Tìm kiếm ("Dùng ngay") -->
+  <path class="edge" d="M890,360 L890,320 L390,320 L390,212" marker-end="url(#arrow)"/>
+  <rect class="lbl-bg" x="582" y="306" width="116" height="13"/>
+  <text class="lbl" x="640" y="317" text-anchor="middle">nhấn "Dùng ngay"</text>
+
+  <!-- Thanh toán → Đăng nhập (người dùng chưa đăng nhập) -->
+  <path class="edge dashed" d="M1100,212 L1100,448 L210,448 L210,500" marker-end="url(#arrow)"/>
+  <rect class="lbl-bg" x="586" y="441" width="172" height="13"/>
+  <text class="lbl" x="672" y="452" text-anchor="middle">người dùng chưa đăng nhập</text>
+
+  <!-- ============= AUTH ARROWS ============= -->
+  <!-- Đăng nhập → Đăng ký -->
+  <path class="edge" d="M240,531 L290,531" marker-end="url(#arrow)"/>
+  <rect class="lbl-bg" x="240" y="516" width="106" height="13"/>
+  <text class="lbl" x="293" y="527" text-anchor="middle">nhấn "Đăng ký"</text>
+
+  <!-- Đăng ký → Xác thực -->
+  <path class="edge" d="M490,531 L540,531" marker-end="url(#arrow)"/>
+  <rect class="lbl-bg" x="486" y="516" width="120" height="13"/>
+  <text class="lbl" x="546" y="527" text-anchor="middle">đăng ký thành công</text>
+
+  <!-- Xác thực → Đăng nhập (loop below at y=579) -->
+  <path class="edge" d="M640,562 L640,579 L140,579 L140,562" marker-end="url(#arrow)"/>
+  <rect class="lbl-bg" x="332" y="571" width="116" height="13"/>
+  <text class="lbl" x="390" y="582" text-anchor="middle">xác thực thành công</text>
+
+  <!-- Đăng nhập → Quên MK (skip 2 cols, below at y=595) -->
+  <path class="edge" d="M240,545 L260,545 L260,595 L885,595 L885,562" marker-end="url(#arrow)"/>
+  <rect class="lbl-bg" x="498" y="587" width="170" height="13"/>
+  <text class="lbl" x="583" y="598" text-anchor="middle">nhấn "Quên mật khẩu"</text>
+
+  <!-- Quên MK → Đổi MK -->
+  <path class="edge" d="M990,531 L1040,531" marker-end="url(#arrow)"/>
+  <rect class="lbl-bg" x="982" y="516" width="116" height="13"/>
+  <text class="lbl" x="1040" y="527" text-anchor="middle">nhập email hợp lệ</text>
+
+  <!-- Đổi MK → Đăng nhập (long back curve) -->
+  <path class="edge" d="M1140,562 L1140,592 L182,592 L182,562" marker-end="url(#arrow)"/>
+  <rect class="lbl-bg" x="826" y="584" width="120" height="13"/>
+  <text class="lbl" x="886" y="595" text-anchor="middle">đổi mật khẩu xong</text>
+
+  <!-- Đăng nhập → Trang chủ (login success - regular user) -->
+  <path class="edge" d="M40,520 L20,520 L20,170 L40,170" marker-end="url(#arrow)"/>
+  <rect class="lbl-bg" x="-44" y="338" width="120" height="13" transform="rotate(-90 16 344)"/>
+  <text class="lbl" x="6" y="348" transform="rotate(-90 16 344)" text-anchor="middle">đăng nhập (USER)</text>
+
+  <!-- Đăng nhập → Admin (role=ADMIN) -->
+  <path class="edge" d="M120,562 L120,640 L140,640 L140,670" marker-end="url(#arrow)"/>
+  <rect class="lbl-bg" x="128" y="603" width="160" height="13"/>
+  <text class="lbl" x="136" y="614">người dùng có vai trò ADMIN</text>
+
+  <!-- Đăng nhập → Staff (role=OPERATOR) -->
+  <path class="edge" d="M240,520 L1430,520 L1430,670" marker-end="url(#arrow)"/>
+  <rect class="lbl-bg" x="700" y="506" width="180" height="13"/>
+  <text class="lbl" x="790" y="517" text-anchor="middle">người dùng có vai trò OPERATOR</text>
+
+  <!-- =============== ADMIN INTERNAL EDGES ================ -->
+  <!-- Admin Dashboard → sidebar hub (visualization) -->
+  <path class="edge soft dashed" d="M240,701 L252,701" marker-end="url(#arrow-soft)"/>
+
+  <!-- products/list → products/add -->
+  <path class="edge soft" d="M240,791 L252,791" marker-end="url(#arrow-soft)"/>
+  <rect class="lbl-bg" x="236" y="777" width="64" height="13"/>
+  <text class="lbl sm" x="268" y="787" text-anchor="middle">nhấn "Thêm SP"</text>
+
+  <!-- products/list → products/edit -->
+  <path class="edge soft" d="M240,810 L380,810 L380,791 L464,791" marker-end="url(#arrow-soft)"/>
+  <rect class="lbl-bg" x="290" y="813" width="86" height="13"/>
+  <text class="lbl sm" x="333" y="823" text-anchor="middle">nhấn "Sửa SP"</text>
+
+  <!-- products/add → products/edit (sau khi tạo) -->
+  <path class="edge soft" d="M452,775 C 458,755 460,755 464,775" marker-end="url(#arrow-soft)"/>
+  <rect class="lbl-bg" x="380" y="743" width="142" height="13"/>
+  <text class="lbl sm" x="451" y="753" text-anchor="middle">sau khi tạo SP thành công</text>
+
+  <!-- categories → products/list?categoryId= -->
+  <path class="edge soft" d="M776,732 L776,750 L140,750 L140,760" marker-end="url(#arrow-soft)"/>
+  <rect class="lbl-bg" x="380" y="743" width="160" height="13" opacity="0"/>
+  <rect class="lbl-bg" x="244" y="737" width="180" height="13"/>
+  <text class="lbl sm" x="334" y="747" text-anchor="middle">nhấn "Xem SP của danh mục"</text>
+
+  <!-- users → chat?room= -->
+  <path class="edge soft" d="M664,701 L876,701 L876,701 L888,701" marker-end="url(#arrow-soft)"/>
+  <rect class="lbl-bg" x="700" y="687" width="160" height="13"/>
+  <text class="lbl sm" x="780" y="697" text-anchor="middle">nhấn "Nhắn KH" → chat</text>
+
+  <!-- Sidebar Admin → all admin pages (suggested) -->
+  <path class="edge soft dashed" d="M1100,881 L1080,920 L40,920 L40,732" marker-end="url(#arrow-soft)" opacity="0.6"/>
+  <rect class="lbl-bg" x="450" y="912" width="220" height="14"/>
+  <text class="lbl sm" x="560" y="923" text-anchor="middle">sidebar dẫn tới mọi trang /admin/*</text>
+
+  <!-- =============== STAFF INTERNAL EDGES =============== -->
+  <path class="edge soft dashed" d="M1430,732 L1430,840" marker-end="url(#arrow-soft)" opacity="0.5"/>
+  <rect class="lbl-bg" x="1438" y="775" width="140" height="13"/>
+  <text class="lbl sm" x="1446" y="785">điều hướng qua sidebar</text>
+
+  <!-- ================ LEGEND ================ -->
+  <g transform="translate(32,1050)">
+    <text class="title-sub" x="0" y="0">Chú giải:</text>
+    <rect x="76" y="-10" width="12" height="12" class="stripe-store"/>
+    <text class="title-sub" x="94" y="0">Cửa hàng</text>
+    <rect x="170" y="-10" width="12" height="12" class="stripe-user"/>
+    <text class="title-sub" x="188" y="0">Tài khoản</text>
+    <rect x="270" y="-10" width="12" height="12" class="stripe-auth"/>
+    <text class="title-sub" x="288" y="0">Xác thực</text>
+    <rect x="360" y="-10" width="12" height="12" class="stripe-admin"/>
+    <text class="title-sub" x="378" y="0">Admin</text>
+    <rect x="440" y="-10" width="12" height="12" class="stripe-staff"/>
+    <text class="title-sub" x="458" y="0">Staff</text>
+
+    <line x1="540" y1="-4" x2="580" y2="-4" stroke="#2F2F2F" stroke-width="1.6"/>
+    <text class="title-sub" x="588" y="0">điều hướng chính</text>
+
+    <line x1="720" y1="-4" x2="760" y2="-4" stroke="#6B6B6B" stroke-width="1.2"/>
+    <text class="title-sub" x="768" y="0">điều hướng nội bộ</text>
+
+    <line x1="900" y1="-4" x2="940" y2="-4" stroke="#2F2F2F" stroke-width="1.6" stroke-dasharray="5 4"/>
+    <text class="title-sub" x="948" y="0">điều kiện / middleware</text>
+  </g>
+</svg>
+</div>
+</body>
+</html>
