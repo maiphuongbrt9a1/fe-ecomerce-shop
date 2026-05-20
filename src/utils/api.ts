@@ -21,7 +21,8 @@ export const sendRequest = async <T>(props: IRequest): Promise<T> => {
   if (useCredentials) options.credentials = "include";
 
   if (queryParams) {
-    url = `${url}?${queryString.stringify(queryParams)}`;
+    const qs = queryString.stringify(queryParams);
+    if (qs) url = `${url}?${qs}`;
   }
 
   // console.log("Fetching URL:", url);
@@ -60,7 +61,8 @@ export const sendRequestFile = async <T>(props: IRequest): Promise<T> => {
   if (useCredentials) options.credentials = "include";
 
   if (queryParams) {
-    url = `${url}?${queryString.stringify(queryParams)}`;
+    const qs = queryString.stringify(queryParams);
+    if (qs) url = `${url}?${qs}`;
   }
 
   const res = await fetch(url, options);
