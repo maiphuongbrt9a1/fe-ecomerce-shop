@@ -34,6 +34,9 @@ yarn-error.log*
 .env*
 .env
 .env.local
+# Catch accidental no-dot copies that the .env* patterns above don't cover
+/env
+/env.*
 
 # vercel
 .vercel
