@@ -10,7 +10,13 @@ import type {
   GhnPickShift,
   UpdateOrderToWaitingPickupDto,
   UpdateOrderStatusWithStaffDto,
+  OrderStatus,
 } from "@/dto/order";
+
+// Special filter keys used by the admin Orders page that don't map 1:1
+// to an OrderStatus. 'all' = no filter; 'pending_return' = orders that
+// have a pending/in-progress return request.
+export type OrderListFilter = "all" | "pending_return" | OrderStatus;
 import type { ReviewDto } from "@/dto/product-detail";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "";
@@ -251,23 +257,14 @@ export const orderService = {
 
   async getAllOrderDetails(
     page: number,
-    perPage: number,
     accessToken: string,
     options: {
-      statusFilter?:
-        | "all"
-        | "waiting"
-        | "shipping"
-        | "delivered"
-        | "pending_return"
-        | "returned"
-        | "cancelled";
+      statusFilter?: OrderListFilter;
       search?: string;
     } = {}
   ): Promise<IBackendRes<OrderFullInformationEntity[]>> {
     const params = new URLSearchParams();
     params.set("page", String(page));
-    params.set("perPage", String(perPage));
     if (options.statusFilter && options.statusFilter !== "all") {
       params.set("statusFilter", options.statusFilter);
     }

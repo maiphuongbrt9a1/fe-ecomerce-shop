@@ -4,7 +4,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Search, Loader2 } from "lucide-react";
-import { orderService } from "@/services/order";
+import { orderService, type OrderListFilter } from "@/services/order";
 import type { OrderFullInformationEntity } from "@/dto/order";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -16,17 +16,27 @@ import { Undo2 } from "lucide-react";
 import { useDebounce } from "@/hooks/useDebounce";
 
 const ROW_HEIGHT = 56;
-const PER_PAGE = 10;
 const COLS = "48px 2fr 160px 140px 120px 120px 160px 130px";
 
-type FilterTab =
-  | "all"
-  | "waiting"
-  | "shipping"
-  | "delivered"
-  | "pending_return"
-  | "returned"
-  | "cancelled";
+type FilterTab = OrderListFilter;
+
+// One tab per OrderStatus so the filter is 1:1 with the Status column.
+// Order mirrors the order lifecycle, with the cross-cutting return-request
+// tab slotted right before RETURNED.
+const TAB_ORDER: { value: FilterTab; label: string }[] = [
+  { value: "all", label: "Tất cả" },
+  { value: "PENDING", label: "Chờ xác nhận" },
+  { value: "PAYMENT_PROCESSING", label: "Đang thanh toán" },
+  { value: "PAYMENT_CONFIRMED", label: "Đã xác nhận" },
+  { value: "WAITING_FOR_PICKUP", label: "Chờ lấy hàng" },
+  { value: "SHIPPED", label: "Đang giao" },
+  { value: "DELIVERED", label: "Đã giao" },
+  { value: "COMPLETED", label: "Hoàn thành" },
+  { value: "DELIVERED_FAILED", label: "Giao thất bại" },
+  { value: "CANCELLED", label: "Đã hủy" },
+  { value: "pending_return", label: "Yêu cầu trả hàng" },
+  { value: "RETURNED", label: "Hoàn tiền" },
+];
 
 const formatDate = (dateStr: string) => {
   const d = new Date(dateStr);
@@ -40,6 +50,7 @@ export default function OrdersClient() {
   const [orders, setOrders] = useState<OrderFullInformationEntity[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
 
   const [activeTab, setActiveTab] = useState<FilterTab>("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -48,56 +59,80 @@ export default function OrdersClient() {
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
   // BE filters by tab + search; FE just renders what the server returns.
-  // requestTokenRef discards stale pagination loops if the user changes tab or
-  // types faster than the network can keep up.
+  // requestTokenRef discards stale requests when the user changes tab or types
+  // faster than the network can keep up.
   const debouncedSearch = useDebounce(searchQuery, 300);
   const requestTokenRef = useRef(0);
+  const pageRef = useRef(1);
 
-  const fetchOrders = useCallback(
+  // Initial load + reload when tab/search changes. Resets to page 1.
+  // hasMore is only flipped to false when BE returns an empty page — we
+  // don't trust any specific page-size guess.
+  const resetAndFetch = useCallback(
     async (tab: FilterTab, search: string) => {
       if (!accessToken) return;
       const token = ++requestTokenRef.current;
       setLoading(true);
+      // Clear any stale loadingMore from a fetchMore that was in flight
+      // when the user switched tabs. Otherwise the scroll trigger stays
+      // gated by !loadingMore and never fires again on the new tab.
+      setLoadingMore(false);
       setOrders([]);
-      const all: OrderFullInformationEntity[] = [];
-      let page = 1;
+      pageRef.current = 1;
+      setHasMore(true);
       try {
-        while (true) {
-          const res = await orderService.getAllOrderDetails(
-            page,
-            PER_PAGE,
-            accessToken,
-            { statusFilter: tab, search },
-          );
-          if (token !== requestTokenRef.current) return;
-          const data = Array.isArray(res.data) ? res.data : [];
-          if (data.length === 0) break;
-          all.push(...data);
-          if (page === 1) {
-            setOrders(all.slice());
-            setLoading(false);
-            setLoadingMore(true);
-          } else {
-            setOrders(all.slice());
-          }
-          if (data.length < PER_PAGE) break;
-          page += 1;
-        }
+        const res = await orderService.getAllOrderDetails(1, accessToken, {
+          statusFilter: tab,
+          search,
+        });
+        if (token !== requestTokenRef.current) return;
+        const data = Array.isArray(res.data) ? res.data : [];
+        console.log("[OrdersClient] Reset fetch page 1:", { tab, search, count: data.length });
+        setOrders(data);
+        setHasMore(data.length > 0);
       } catch (err) {
         console.error("[OrdersClient] Fetch error:", err);
       } finally {
         if (token === requestTokenRef.current) {
           setLoading(false);
-          setLoadingMore(false);
         }
       }
     },
     [accessToken],
   );
 
+  // Infinite scroll: fetch next page when user scrolls near the end.
+  // Stop only when BE returns 0 items.
+  const fetchMore = useCallback(async () => {
+    if (!accessToken) return;
+    const token = requestTokenRef.current;
+    const nextPage = pageRef.current + 1;
+    setLoadingMore(true);
+    try {
+      const res = await orderService.getAllOrderDetails(nextPage, accessToken, {
+        statusFilter: activeTab,
+        search: debouncedSearch,
+      });
+      if (token !== requestTokenRef.current) return;
+      const data = Array.isArray(res.data) ? res.data : [];
+      console.log("[OrdersClient] Fetch more page:", nextPage, "count:", data.length);
+      if (data.length > 0) {
+        setOrders((prev) => [...prev, ...data]);
+        pageRef.current = nextPage;
+      } else {
+        setHasMore(false);
+      }
+    } catch (err) {
+      console.error("[OrdersClient] Fetch more error:", err);
+    } finally {
+      // Always clear — leaving it true on a stale call freezes the trigger.
+      setLoadingMore(false);
+    }
+  }, [accessToken, activeTab, debouncedSearch]);
+
   useEffect(() => {
-    fetchOrders(activeTab, debouncedSearch);
-  }, [fetchOrders, activeTab, debouncedSearch]);
+    resetAndFetch(activeTab, debouncedSearch);
+  }, [resetAndFetch, activeTab, debouncedSearch]);
 
   const rowVirtualizer = useVirtualizer({
     count: orders.length,
@@ -105,6 +140,16 @@ export default function OrdersClient() {
     estimateSize: () => ROW_HEIGHT,
     overscan: 10,
   });
+
+  // Trigger fetchMore when the last few virtual items come into view.
+  const virtualItems = rowVirtualizer.getVirtualItems();
+  useEffect(() => {
+    const lastItem = virtualItems[virtualItems.length - 1];
+    if (!lastItem) return;
+    if (lastItem.index >= orders.length - 5 && hasMore && !loadingMore && !loading) {
+      fetchMore();
+    }
+  }, [virtualItems, orders.length, hasMore, loadingMore, loading, fetchMore]);
 
   const handleOrderUpdated = (updated: OrderFullInformationEntity) => {
     setOrders((prev) => prev.map((o) => (o.id === updated.id ? updated : o)));
@@ -120,13 +165,11 @@ export default function OrdersClient() {
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as FilterTab)}>
         <div className="overflow-x-auto -mx-3 sm:mx-0 px-3 sm:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <TabsList className="bg-[var(--admin-green-light)] w-max">
-            <TabsTrigger value="all" className="cursor-pointer">Tất cả</TabsTrigger>
-            <TabsTrigger value="waiting" className="cursor-pointer">Đang chờ</TabsTrigger>
-            <TabsTrigger value="shipping" className="cursor-pointer">Đang giao</TabsTrigger>
-            <TabsTrigger value="delivered" className="cursor-pointer">Đã giao</TabsTrigger>
-            <TabsTrigger value="pending_return" className="cursor-pointer">Yêu cầu trả hàng</TabsTrigger>
-            <TabsTrigger value="returned" className="cursor-pointer">Hoàn tiền</TabsTrigger>
-            <TabsTrigger value="cancelled" className="cursor-pointer">Đã hủy</TabsTrigger>
+            {TAB_ORDER.map((t) => (
+              <TabsTrigger key={t.value} value={t.value} className="cursor-pointer">
+                {t.label}
+              </TabsTrigger>
+            ))}
           </TabsList>
         </div>
       </Tabs>
