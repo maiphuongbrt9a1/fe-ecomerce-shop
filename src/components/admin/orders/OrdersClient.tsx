@@ -25,7 +25,6 @@ type FilterTab = OrderListFilter;
 // tab slotted right before RETURNED.
 const TAB_ORDER: { value: FilterTab; label: string }[] = [
   { value: "all", label: "Tất cả" },
-  { value: "PENDING", label: "Chờ xác nhận" },
   { value: "PAYMENT_PROCESSING", label: "Đang thanh toán" },
   { value: "PAYMENT_CONFIRMED", label: "Đã xác nhận" },
   { value: "WAITING_FOR_PICKUP", label: "Chờ lấy hàng" },
