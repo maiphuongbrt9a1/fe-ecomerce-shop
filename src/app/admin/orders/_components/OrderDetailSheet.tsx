@@ -313,7 +313,12 @@ export default function OrderDetailSheet({
                 <StatusIcon className="w-4 h-4 shrink-0" />
                 {statusCfg.label}
               </div>
-              {payment?.paymentDate && (
+              {/* paymentDate defaults to row-creation time on the BE (schema
+                  has @default(now()) and the Payments row is inserted at order
+                  creation). Only show it once an actual payment event has
+                  fired — i.e. status === 'PAID'. Otherwise the timestamp is
+                  really the order creation time. */}
+              {payment?.status === "PAID" && payment.paymentDate && (
                 <p className="text-[13px] text-gray-500">
                   Thanh toán lúc: {formatDate(payment.paymentDate)}
                 </p>
