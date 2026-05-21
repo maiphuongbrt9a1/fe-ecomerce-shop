@@ -34,10 +34,13 @@ export const productService = {
   async getAllProducts(
     params: GetProductsParams & { accessToken?: string }
   ): Promise<IBackendRes<ProductDto[]>> {
-    const { page = 1, perPage = 20, search, accessToken } = params;
+    const { page = 1, perPage = 20, search, categoryId, inStock, onSale, accessToken } = params;
     const url = `${BACKEND_URL}/products`;
-    const queryParams: Record<string, string | number> = { page, perPage };
+    const queryParams: Record<string, string | number | boolean> = { page, perPage };
     if (search && search.trim()) queryParams.search = search.trim();
+    if (categoryId !== undefined) queryParams.categoryId = categoryId;
+    if (inStock !== undefined) queryParams.inStock = inStock;
+    if (onSale !== undefined) queryParams.onSale = onSale;
     const response = await sendRequest<IBackendRes<ProductDto[]>>({
       url,
       method: "GET",

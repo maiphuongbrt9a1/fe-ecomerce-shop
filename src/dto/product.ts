@@ -99,6 +99,9 @@ export interface GetProductsParams {
   page?: number;
   perPage?: number;
   search?: string;
+  categoryId?: number;
+  inStock?: boolean;
+  onSale?: boolean;
 }
 
 /**

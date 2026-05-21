@@ -15,6 +15,8 @@ const PER_PAGE = 20;
 interface ProductVariantsTableProps {
   stockOnlyEdit: boolean;
   searchQuery: string;
+  inStock?: boolean;
+  onSale?: boolean;
   accessToken: string;
   onEditVariant: (productId: number) => void;
 }
@@ -27,72 +29,107 @@ const formatDate = (dateStr: string): string => {
 export default function ProductVariantsTable({
   stockOnlyEdit,
   searchQuery,
+  inStock,
+  onSale,
   accessToken,
   onEditVariant,
 }: ProductVariantsTableProps) {
   const [variants, setVariants] = useState<ProductVariantWithMediaAndProductEntity[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const pageRef         = useRef(1);
+  const requestTokenRef = useRef(0);
+  // Filter snapshot active in the current set. fetchMore uses this so the next
+  // page matches whatever resetAndFetch started — independent of what the
+  // controls are showing right now.
+  const activeFiltersRef = useRef<{ search: string; inStock?: boolean; onSale?: boolean }>({ search: "" });
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
   const debouncedSearch = useDebounce(searchQuery, 300);
-  const requestTokenRef = useRef(0);
 
-  const fetchAllVariants = useCallback(
-    async (search: string) => {
+  const resetAndFetch = useCallback(
+    async (search: string, inStockFilter?: boolean, onSaleFilter?: boolean) => {
       if (!accessToken) return;
       const token = ++requestTokenRef.current;
+      activeFiltersRef.current = { search, inStock: inStockFilter, onSale: onSaleFilter };
       setLoading(true);
+      setLoadingMore(false);
       setVariants([]);
-      const all: ProductVariantWithMediaAndProductEntity[] = [];
-      let page = 1;
+      pageRef.current = 1;
+      setHasMore(true);
       try {
-        while (true) {
-          const res = await productVariantService.getAllProductVariants({
-            page,
-            perPage: PER_PAGE,
-            search,
-            accessToken,
-          });
-          if (token !== requestTokenRef.current) return;
-          const data = res.data ?? [];
-          if (data.length === 0) break;
-          all.push(...data);
-          if (page === 1) {
-            setVariants(all.slice());
-            setLoading(false);
-            setLoadingMore(true);
-          } else {
-            setVariants(all.slice());
-          }
-          if (data.length < PER_PAGE) break;
-          page += 1;
-        }
+        const res = await productVariantService.getAllProductVariants({
+          page: 1,
+          perPage: PER_PAGE,
+          search,
+          inStock: inStockFilter,
+          onSale: onSaleFilter,
+          accessToken,
+        });
+        if (token !== requestTokenRef.current) return;
+        const data = res.data ?? [];
+        setVariants(data);
+        setHasMore(data.length > 0);
       } catch (err) {
-        console.log("[ProductVariantsTable] Error fetching variants:", err);
+        console.error("[ProductVariantsTable] reset fetch error:", err);
       } finally {
-        if (token === requestTokenRef.current) {
-          setLoading(false);
-          setLoadingMore(false);
-        }
+        if (token === requestTokenRef.current) setLoading(false);
       }
     },
-    [accessToken]
+    [accessToken],
   );
 
-  useEffect(() => {
-    fetchAllVariants(debouncedSearch);
-  }, [fetchAllVariants, debouncedSearch]);
+  const fetchMore = useCallback(async () => {
+    if (!accessToken) return;
+    const token = requestTokenRef.current;
+    const nextPage = pageRef.current + 1;
+    const { search, inStock: inStockFilter, onSale: onSaleFilter } = activeFiltersRef.current;
+    setLoadingMore(true);
+    try {
+      const res = await productVariantService.getAllProductVariants({
+        page: nextPage,
+        perPage: PER_PAGE,
+        search,
+        inStock: inStockFilter,
+        onSale: onSaleFilter,
+        accessToken,
+      });
+      if (token !== requestTokenRef.current) return;
+      const data = res.data ?? [];
+      if (data.length > 0) {
+        setVariants((prev) => [...prev, ...data]);
+        pageRef.current = nextPage;
+      } else {
+        setHasMore(false);
+      }
+    } catch (err) {
+      console.error("[ProductVariantsTable] fetchMore error:", err);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [accessToken]);
 
-  // Server-side filtered — render the response directly.
-  const searched = variants;
+  useEffect(() => {
+    resetAndFetch(debouncedSearch, inStock, onSale);
+  }, [resetAndFetch, debouncedSearch, inStock, onSale]);
 
   const rowVirtualizer = useVirtualizer({
-    count: searched.length,
+    count: variants.length,
     getScrollElement: () => tableContainerRef.current,
     estimateSize: () => ROW_HEIGHT,
     overscan: 10,
+    getItemKey: (index) => variants[index]?.id ?? index,
   });
+
+  const virtualItems = rowVirtualizer.getVirtualItems();
+  useEffect(() => {
+    const last = virtualItems[virtualItems.length - 1];
+    if (!last) return;
+    if (last.index >= variants.length - 5 && hasMore && !loadingMore && !loading) {
+      fetchMore();
+    }
+  }, [virtualItems, variants.length, hasMore, loadingMore, loading, fetchMore]);
 
   const gridCols = stockOnlyEdit
     ? "48px 64px 1.4fr 1.6fr 1fr 90px 80px 110px 90px 110px"
@@ -137,7 +174,7 @@ export default function ProductVariantsTable({
             <div className="flex items-center justify-center py-12 text-gray-400 text-sm">
               Đang tải...
             </div>
-          ) : searched.length === 0 ? (
+          ) : variants.length === 0 ? (
             <div className="flex items-center justify-center py-12 text-gray-400 text-sm">
               Không tìm thấy biến thể nào
             </div>
@@ -150,12 +187,11 @@ export default function ProductVariantsTable({
               }}
             >
               {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-                const variant = searched[virtualRow.index];
+                const variant = variants[virtualRow.index];
                 const imgUrl = variant.media?.[0]?.url ?? null;
                 return (
                   <div
                     key={variant.id}
-                    data-index={virtualRow.index}
                     onClick={() => onEditVariant(variant.productId)}
                     className="grid border-t border-gray-100 hover:bg-gray-50 cursor-pointer items-center"
                     style={{
@@ -164,6 +200,7 @@ export default function ProductVariantsTable({
                       top: 0,
                       left: 0,
                       width: "100%",
+                      height: ROW_HEIGHT,
                       transform: `translateY(${virtualRow.start}px)`,
                     }}
                   >

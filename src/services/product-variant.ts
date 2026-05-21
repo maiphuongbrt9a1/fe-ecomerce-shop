@@ -102,12 +102,14 @@ export const productVariantService = {
   },
 
   async getAllProductVariants(
-    params: { page?: number; perPage?: number; search?: string; accessToken?: string } = {}
+    params: { page?: number; perPage?: number; search?: string; inStock?: boolean; onSale?: boolean; accessToken?: string } = {}
   ): Promise<IBackendRes<ProductVariantWithMediaAndProductEntity[]>> {
-    const { page = 1, perPage = 10, search, accessToken } = params;
+    const { page = 1, perPage = 10, search, inStock, onSale, accessToken } = params;
     const url = `${BACKEND_URL}/product-variants`;
-    const queryParams: Record<string, string | number> = { page, perPage };
+    const queryParams: Record<string, string | number | boolean> = { page, perPage };
     if (search && search.trim()) queryParams.search = search.trim();
+    if (inStock !== undefined) queryParams.inStock = inStock;
+    if (onSale !== undefined) queryParams.onSale = onSale;
     const response = await sendRequest<IBackendRes<ProductVariantWithMediaAndProductEntity[]>>({
       url,
       method: "GET",

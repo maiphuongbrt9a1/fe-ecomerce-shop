@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo, useRef, Suspense } from "react";
+import { useEffect, useState, useCallback, useRef, Suspense } from "react";
 import { useSession } from "next-auth/react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { useVirtualizer } from "@tanstack/react-virtual";
@@ -45,6 +45,13 @@ interface ProductsListClientProps {
   stockOnlyEdit?: boolean;
 }
 
+// Maps the UI tab to the BE filter flags so resetAndFetch stays declarative.
+const tabToFilters = (tab: FilterTab): { inStock?: boolean; onSale?: boolean } => {
+  if (tab === "out_of_stock") return { inStock: false };
+  if (tab === "on_sale") return { onSale: true };
+  return {};
+};
+
 function ProductsListContent({ stockOnlyEdit = false }: ProductsListClientProps) {
   const { data: session } = useSession();
   const searchParams = useSearchParams();
@@ -72,6 +79,7 @@ function ProductsListContent({ stockOnlyEdit = false }: ProductsListClientProps)
   const [categories, setCategories] = useState<CategoryDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
   const [activeTab, setActiveTab] = useState<FilterTab>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
@@ -101,76 +109,86 @@ function ProductsListContent({ stockOnlyEdit = false }: ProductsListClientProps)
 
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
-  // Debounced search → server-side filter. requestTokenRef cancels stale loops
-  // when the user types faster than the network can keep up.
+  // Server-side filtering + pagination. The active filter snapshot lives in a
+  // ref so fetchMore always pulls the next page with the same filters that
+  // started the current set — independent of what's been typed/clicked since.
   const debouncedSearch = useDebounce(searchQuery, 300);
   const requestTokenRef = useRef(0);
+  const pageRef         = useRef(1);
+  const activeFiltersRef = useRef<{
+    search: string;
+    categoryId: number | null;
+    tab: FilterTab;
+  }>({ search: "", categoryId: null, tab: "all" });
 
-  const fetchAllProducts = useCallback(
-    async (search: string) => {
+  const resetAndFetch = useCallback(
+    async (search: string, categoryId: number | null, tab: FilterTab) => {
       if (!accessToken) return;
       const token = ++requestTokenRef.current;
+      activeFiltersRef.current = { search, categoryId, tab };
       setLoading(true);
+      setLoadingMore(false);
       setProducts([]);
-      const all: ProductDto[] = [];
-      let page = 1;
+      pageRef.current = 1;
+      setHasMore(true);
       try {
-        while (true) {
-          const res = await productService.getAllProducts({
-            page,
-            perPage: PER_PAGE,
-            search,
-            accessToken,
-          });
-          if (token !== requestTokenRef.current) return;
-          const data = res.data ?? [];
-          if (data.length === 0) break;
-          all.push(...data);
-          if (page === 1) {
-            setProducts(all.slice());
-            setLoading(false);
-            setLoadingMore(true);
-          } else {
-            setProducts(all.slice());
-          }
-          if (data.length < PER_PAGE) break;
-          page += 1;
-        }
+        const res = await productService.getAllProducts({
+          page: 1,
+          perPage: PER_PAGE,
+          search,
+          categoryId: categoryId ?? undefined,
+          ...tabToFilters(tab),
+          accessToken,
+        });
+        if (token !== requestTokenRef.current) return;
+        const data = res.data ?? [];
+        setProducts(data);
+        setHasMore(data.length > 0);
       } catch (err) {
-        console.log("[ProductList] Error fetching products:", err);
+        console.error("[ProductList] reset fetch error:", err);
       } finally {
-        if (token === requestTokenRef.current) {
-          setLoading(false);
-          setLoadingMore(false);
-        }
+        if (token === requestTokenRef.current) setLoading(false);
       }
     },
     [accessToken]
   );
 
-  const fetchProductsByCategory = useCallback(
-    async (categoryId: number) => {
-      setLoading(true);
-      try {
-        console.log("[ProductList] Fetching products for category:", categoryId);
-        const res = await categoryService.getProductsByCategory(categoryId, { page: 1, perPage: 100 }, accessToken);
-        setProducts(res.data ?? []);
-      } catch (err) {
-        console.log("[ProductList] Error fetching category products:", err);
-        setProducts([]);
-      } finally {
-        setLoading(false);
+  const fetchMore = useCallback(async () => {
+    if (!accessToken) return;
+    const token = requestTokenRef.current;
+    const nextPage = pageRef.current + 1;
+    const { search, categoryId, tab } = activeFiltersRef.current;
+    setLoadingMore(true);
+    try {
+      const res = await productService.getAllProducts({
+        page: nextPage,
+        perPage: PER_PAGE,
+        search,
+        categoryId: categoryId ?? undefined,
+        ...tabToFilters(tab),
+        accessToken,
+      });
+      if (token !== requestTokenRef.current) return;
+      const data = res.data ?? [];
+      if (data.length > 0) {
+        setProducts((prev) => [...prev, ...data]);
+        pageRef.current = nextPage;
+      } else {
+        setHasMore(false);
       }
-    },
-    [accessToken]
-  );
+    } catch (err) {
+      console.error("[ProductList] fetchMore error:", err);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [accessToken]);
 
   const fetchCategories = useCallback(async () => {
     try {
       const res = await categoryService.getAllCategories(accessToken);
       setCategories(res.data ?? []);
     } catch (err) {
-      console.log("[ProductList] Error fetching categories:", err);
+      console.error("[ProductList] fetchCategories error:", err);
       setCategories([]);
     }
   }, [accessToken]);
@@ -179,29 +197,17 @@ function ProductsListContent({ stockOnlyEdit = false }: ProductsListClientProps)
     if (accessToken) fetchCategories();
   }, [accessToken, fetchCategories]);
 
+  // Any filter change (search / category / tab) resets to page 1 server-side.
   useEffect(() => {
     if (!accessToken) return;
-    if (activeCategoryId !== null) {
-      // Category-scoped fetch doesn't accept a server-side search yet — text
-      // filtering falls back to client-side over the category's result set
-      // inside `searchedProducts` below.
-      fetchProductsByCategory(activeCategoryId);
-    } else {
-      fetchAllProducts(debouncedSearch);
-    }
-  }, [
-    accessToken,
-    activeCategoryId,
-    debouncedSearch,
-    fetchAllProducts,
-    fetchProductsByCategory,
-  ]);
+    resetAndFetch(debouncedSearch, activeCategoryId, activeTab);
+  }, [accessToken, debouncedSearch, activeCategoryId, activeTab, resetAndFetch]);
 
   const handleProductSaved = useCallback(() => {
     setProductModalOpen(false);
     setEditingProductId(null);
-    fetchAllProducts(debouncedSearch);
-  }, [fetchAllProducts, debouncedSearch]);
+    resetAndFetch(debouncedSearch, activeCategoryId, activeTab);
+  }, [resetAndFetch, debouncedSearch, activeCategoryId, activeTab]);
 
   const handleCategoryClick = (categoryId: number) => {
     setActiveCategoryId(activeCategoryId === categoryId ? null : categoryId);
@@ -216,7 +222,7 @@ function ProductsListContent({ stockOnlyEdit = false }: ProductsListClientProps)
       setDeleteConfirmId(null);
       setProducts((prev) => prev.filter((p) => p.id !== id));
     } catch (err) {
-      console.log("[ProductList] Error deleting product:", err);
+      console.error("[ProductList] Delete error:", err);
     }
   };
 
@@ -263,36 +269,22 @@ function ProductsListContent({ stockOnlyEdit = false }: ProductsListClientProps)
     return `${String(d.getDate()).padStart(2, "0")}-${String(d.getMonth() + 1).padStart(2, "0")}-${d.getFullYear()}`;
   };
 
-  const isVoucherActive = (p: ProductDto): boolean => {
-    if (!p.voucherId || !p.voucher) return false;
-    if (!p.voucher.isActive) return false;
-    const now = Date.now();
-    return now >= new Date(p.voucher.validFrom).getTime() && now <= new Date(p.voucher.validTo).getTime();
-  };
-
-  const filteredProducts = useMemo(
-    () =>
-      products.filter((p) => {
-        if (activeTab === "out_of_stock") return p.stock === 0;
-        if (activeTab === "on_sale") return isVoucherActive(p);
-        return true;
-      }),
-    [products, activeTab]
-  );
-
-  const searchedProducts = useMemo(() => {
-    // Server already filtered when no category is selected — skip client-side text filter
-    if (activeCategoryId === null || !searchQuery) return filteredProducts;
-    const q = searchQuery.toLowerCase();
-    return filteredProducts.filter((p) => p.name.toLowerCase().includes(q));
-  }, [filteredProducts, searchQuery, activeCategoryId]);
-
   const rowVirtualizer = useVirtualizer({
-    count: searchedProducts.length,
+    count: products.length,
     getScrollElement: () => tableContainerRef.current,
     estimateSize: () => ROW_HEIGHT,
     overscan: 10,
+    getItemKey: (index) => products[index]?.id ?? index,
   });
+
+  const virtualItems = rowVirtualizer.getVirtualItems();
+  useEffect(() => {
+    const last = virtualItems[virtualItems.length - 1];
+    if (!last) return;
+    if (last.index >= products.length - 5 && hasMore && !loadingMore && !loading) {
+      fetchMore();
+    }
+  }, [virtualItems, products.length, hasMore, loadingMore, loading, fetchMore]);
 
   const gridCols = stockOnlyEdit
     ? "48px 2fr 1fr 120px 80px 80px 110px"
@@ -375,19 +367,17 @@ function ProductsListContent({ stockOnlyEdit = false }: ProductsListClientProps)
         )}
 
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 px-3 sm:px-4 pt-3 pb-2 flex-shrink-0">
-          {view === "products" ? (
-            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as FilterTab)}>
-              <div className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                <TabsList className="bg-[var(--admin-green-light)] w-max">
-                  <TabsTrigger value="all" className="cursor-pointer">Tất cả sản phẩm</TabsTrigger>
-                  <TabsTrigger value="on_sale" className="cursor-pointer">Đang giảm giá</TabsTrigger>
-                  <TabsTrigger value="out_of_stock" className="cursor-pointer">Hết hàng</TabsTrigger>
-                </TabsList>
-              </div>
-            </Tabs>
-          ) : (
-            <div />
-          )}
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as FilterTab)}>
+            <div className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <TabsList className="bg-[var(--admin-green-light)] w-max">
+                <TabsTrigger value="all" className="cursor-pointer">
+                  {view === "variants" ? "Tất cả biến thể" : "Tất cả sản phẩm"}
+                </TabsTrigger>
+                <TabsTrigger value="on_sale" className="cursor-pointer">Đang giảm giá</TabsTrigger>
+                <TabsTrigger value="out_of_stock" className="cursor-pointer">Hết hàng</TabsTrigger>
+              </TabsList>
+            </div>
+          </Tabs>
           <div className="relative w-full md:w-auto">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
             <Input
@@ -403,6 +393,8 @@ function ProductsListContent({ stockOnlyEdit = false }: ProductsListClientProps)
           <ProductVariantsTable
             stockOnlyEdit={stockOnlyEdit}
             searchQuery={searchQuery}
+            inStock={tabToFilters(activeTab).inStock}
+            onSale={tabToFilters(activeTab).onSale}
             accessToken={accessToken}
             onEditVariant={openEditModal}
           />
@@ -438,17 +430,16 @@ function ProductsListContent({ stockOnlyEdit = false }: ProductsListClientProps)
         <div ref={tableContainerRef} className="overflow-auto flex-1 min-h-0">
           {loading ? (
             <div className="flex items-center justify-center py-12 text-gray-400 text-sm">Đang tải...</div>
-          ) : searchedProducts.length === 0 ? (
+          ) : products.length === 0 ? (
             <div className="flex items-center justify-center py-12 text-gray-400 text-sm">Không tìm thấy sản phẩm nào</div>
           ) : (
             <div style={{ height: `${rowVirtualizer.getTotalSize()}px`, width: "100%", position: "relative" }}>
               {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-                const product = searchedProducts[virtualRow.index];
+                const product = products[virtualRow.index];
                 const imgUrl = getProductImage(product);
                 return (
                   <div
                     key={product.id}
-                    data-index={virtualRow.index}
                     onClick={() => openEditModal(product.id)}
                     className="grid border-t border-gray-100 hover:bg-gray-50 cursor-pointer items-center"
                     style={{
@@ -457,6 +448,7 @@ function ProductsListContent({ stockOnlyEdit = false }: ProductsListClientProps)
                       top: 0,
                       left: 0,
                       width: "100%",
+                      height: ROW_HEIGHT,
                       transform: `translateY(${virtualRow.start}px)`,
                     }}
                   >
