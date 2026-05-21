@@ -8,20 +8,21 @@ export const reviewService = {
     page = 1,
     perPage = 20,
     rating: number | undefined,
-    accessToken: string
+    accessToken: string,
+    search?: string,
   ): Promise<IBackendRes<AdminReviewDto[]>> {
     const queryParams: Record<string, string | number> = { page, perPage };
     if (rating != null) queryParams.rating = rating;
+    const trimmed = search?.trim();
+    if (trimmed) queryParams.search = trimmed;
 
     const url = `${BACKEND_URL}/reviews`;
-    // console.log("[ReviewService] Fetching reviews:", { page, perPage, rating });
     const response = await sendRequest<IBackendRes<AdminReviewDto[]>>({
       url,
       method: "GET",
       queryParams,
       headers: { Authorization: `Bearer ${accessToken}` },
     });
-    // console.log("[ReviewService] Fetched", response?.data?.length ?? 0, "reviews");
     return response;
   },
 
