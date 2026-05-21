@@ -1,11 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Loader2, Search, Shield, User, UserCog } from "lucide-react";
 import { toast } from "sonner";
 import { userService, type UserDto, type UserRole } from "@/services/user";
+import { useDebounce } from "@/hooks/useDebounce";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import RoleChangeDialog from "./RoleChangeDialog";
 
 const ROW_HEIGHT = 72;
@@ -23,6 +25,9 @@ const ROLE_META: Record<
 };
 
 const ROLE_ORDER: UserRole[] = ["USER", "OPERATOR", "ADMIN"];
+
+const tabToRole = (tab: RoleTab): UserRole | undefined =>
+  tab === "ALL" ? undefined : tab;
 
 function getDisplayName(user: UserDto): string {
   return (
@@ -48,13 +53,22 @@ export default function AuthorityClient() {
   const accessToken = session?.user?.access_token || "";
   const myId = session?.user?.id;
 
-  const [users, setUsers] = useState<UserDto[]>([]);
-  const [loading, setLoading] = useState(true);
+  // List state — one BE-paginated window, no client-side preload.
+  const [users, setUsers]             = useState<UserDto[]>([]);
+  const [loading, setLoading]         = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore]         = useState(true);
+  const pageRef         = useRef(1);
+  const requestTokenRef = useRef(0);
+  // Snapshot of the filters that started the current set — fetchMore uses
+  // these so the next page lines up even if filters change mid-fetch.
+  const activeFiltersRef = useRef<{ search: string; role: UserRole | undefined }>({
+    search: "",
+    role: undefined,
+  });
 
   const [searchInput, setSearchInput] = useState("");
-  const [appliedSearch, setAppliedSearch] = useState("");
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const debouncedSearch = useDebounce(searchInput, 300);
 
   const [activeTab, setActiveTab] = useState<RoleTab>("ALL");
 
@@ -66,89 +80,76 @@ export default function AuthorityClient() {
 
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!accessToken) return;
-    let cancelled = false;
-
-    (async () => {
+  const resetAndFetch = useCallback(
+    async (search: string, role: UserRole | undefined) => {
+      if (!accessToken) return;
+      const token = ++requestTokenRef.current;
+      activeFiltersRef.current = { search, role };
       setLoading(true);
+      setLoadingMore(false);
       setUsers([]);
-      let page = 1;
-      const all: UserDto[] = [];
+      pageRef.current = 1;
+      setHasMore(true);
       try {
-        while (!cancelled) {
-          console.log("[AdminAuthority] Fetching page:", page);
-          const res = await userService.getUsers(page, PER_PAGE, accessToken);
-          const data = Array.isArray(res?.data) ? res.data : [];
-          console.log("[AdminAuthority] Page", page, "→ got", data.length, "items");
-          if (data.length === 0) break;
-          all.push(...data);
-          if (cancelled) return;
-          // First page → swap from spinner to streaming list
-          if (page === 1) {
-            setUsers(all.slice());
-            setLoading(false);
-            setLoadingMore(true);
-          } else {
-            setUsers(all.slice());
-          }
-          if (data.length < PER_PAGE) break;
-          page += 1;
-        }
-        if (!cancelled) {
-          console.log("[AdminAuthority] Done. Total users:", all.length);
-        }
+        const res = await userService.getUsers(1, PER_PAGE, accessToken, search, role);
+        if (token !== requestTokenRef.current) return;
+        const data = Array.isArray(res?.data) ? res.data : [];
+        setUsers(data);
+        setHasMore(data.length > 0);
       } catch (err) {
-        console.error("[AdminAuthority] Fetch error:", err);
+        console.error("[AdminAuthority] reset fetch error:", err);
       } finally {
-        if (!cancelled) {
-          setLoading(false);
-          setLoadingMore(false);
-        }
+        if (token === requestTokenRef.current) setLoading(false);
       }
-    })();
+    },
+    [accessToken],
+  );
 
-    return () => {
-      cancelled = true;
-    };
+  const fetchMore = useCallback(async () => {
+    if (!accessToken) return;
+    const token = requestTokenRef.current;
+    const nextPage = pageRef.current + 1;
+    const { search, role } = activeFiltersRef.current;
+    setLoadingMore(true);
+    try {
+      const res = await userService.getUsers(nextPage, PER_PAGE, accessToken, search, role);
+      if (token !== requestTokenRef.current) return;
+      const data = Array.isArray(res?.data) ? res.data : [];
+      if (data.length > 0) {
+        setUsers((prev) => [...prev, ...data]);
+        pageRef.current = nextPage;
+      } else {
+        setHasMore(false);
+      }
+    } catch (err) {
+      console.error("[AdminAuthority] fetchMore error:", err);
+    } finally {
+      setLoadingMore(false);
+    }
   }, [accessToken]);
 
-  const handleSearchChange = (value: string) => {
-    setSearchInput(value);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => setAppliedSearch(value), 300);
-  };
-
-  const counts = useMemo(() => {
-    const c = { ALL: users.length, ADMIN: 0, OPERATOR: 0, USER: 0 };
-    for (const u of users) {
-      const r = (u.role ?? "USER") as UserRole;
-      c[r] += 1;
-    }
-    return c;
-  }, [users]);
-
-  const filteredUsers = useMemo(() => {
-    const q = appliedSearch.trim().toLowerCase();
-    return users.filter((u) => {
-      const role = (u.role ?? "USER") as UserRole;
-      if (activeTab !== "ALL" && role !== activeTab) return false;
-      if (!q) return true;
-      return (
-        `#${String(u.id).padStart(4, "0")}`.includes(q) ||
-        getDisplayName(u).toLowerCase().includes(q) ||
-        u.email.toLowerCase().includes(q) ||
-        (u.phone ?? "").includes(q)
-      );
-    });
-  }, [users, appliedSearch, activeTab]);
+  // Any filter change → reset to page 1 server-side.
+  useEffect(() => {
+    if (!accessToken) return;
+    resetAndFetch(debouncedSearch, tabToRole(activeTab));
+  }, [accessToken, debouncedSearch, activeTab, resetAndFetch]);
 
   const rowVirtualizer = useVirtualizer({
-    count: filteredUsers.length,
+    count: users.length,
     getScrollElement: () => tableContainerRef.current,
     estimateSize: () => ROW_HEIGHT,
     overscan: 10,
+    getItemKey: (index) => users[index]?.id ?? index,
   });
+
+  const virtualItems = rowVirtualizer.getVirtualItems();
+  useEffect(() => {
+    const last = virtualItems[virtualItems.length - 1];
+    if (!last) return;
+    if (last.index >= users.length - 5 && hasMore && !loadingMore && !loading) {
+      fetchMore();
+    }
+  }, [virtualItems, users.length, hasMore, loadingMore, loading, fetchMore]);
 
   const requestRoleChange = (user: UserDto, nextRole: UserRole) => {
     if (savingId !== null) return;
@@ -172,9 +173,16 @@ export default function AuthorityClient() {
         accessToken
       );
       console.log("[AdminAuthority] Update response:", res);
-      setUsers((prev) =>
-        prev.map((u) => (u.id === user.id ? { ...u, role: nextRole } : u))
-      );
+      // If a role filter is active and the user no longer matches it, drop them
+      // from the visible set instead of holding a stale row.
+      const { role: currentFilter } = activeFiltersRef.current;
+      if (currentFilter && nextRole !== currentFilter) {
+        setUsers((prev) => prev.filter((u) => u.id !== user.id));
+      } else {
+        setUsers((prev) =>
+          prev.map((u) => (u.id === user.id ? { ...u, role: nextRole } : u))
+        );
+      }
       toast.success(
         `Đã đổi vai trò của ${getDisplayName(user)} thành ${ROLE_META[nextRole].label}`
       );
@@ -187,11 +195,11 @@ export default function AuthorityClient() {
     }
   };
 
-  const tabs: { key: RoleTab; label: string; count: number }[] = [
-    { key: "ALL",      label: "Tất cả tài khoản", count: counts.ALL },
-    { key: "ADMIN",    label: "Admin",            count: counts.ADMIN },
-    { key: "OPERATOR", label: "Nhân viên",        count: counts.OPERATOR },
-    { key: "USER",     label: "Khách hàng",       count: counts.USER },
+  const tabs: { key: RoleTab; label: string }[] = [
+    { key: "ALL",      label: "Tất cả tài khoản" },
+    { key: "ADMIN",    label: "Admin" },
+    { key: "OPERATOR", label: "Nhân viên" },
+    { key: "USER",     label: "Khách hàng" },
   ];
 
   return (
@@ -208,27 +216,17 @@ export default function AuthorityClient() {
           <h2 className="text-lg font-semibold text-[#023337]">Các tài khoản</h2>
 
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-1 bg-gray-50 rounded-md p-1 overflow-x-auto max-w-full [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              {tabs.map((t) => {
-                const active = activeTab === t.key;
-                return (
-                  <button
-                    key={t.key}
-                    onClick={() => setActiveTab(t.key)}
-                    className={`px-4 py-1.5 text-sm rounded-md cursor-pointer transition-colors ${
-                      active
-                        ? "bg-[var(--admin-green-mid)] text-[var(--admin-green-dark)] font-semibold"
-                        : "text-gray-600 hover:text-[#023337]"
-                    }`}
-                  >
-                    {t.label}
-                    {t.key === "ALL" && (
-                      <span className="ml-1 text-xs text-gray-500">({t.count})</span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
+            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as RoleTab)}>
+              <div className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                <TabsList className="bg-[var(--admin-green-light)] w-max">
+                  {tabs.map((t) => (
+                    <TabsTrigger key={t.key} value={t.key} className="cursor-pointer">
+                      {t.label}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </div>
+            </Tabs>
 
             <div className="relative w-full sm:w-auto">
               <Search
@@ -238,7 +236,7 @@ export default function AuthorityClient() {
               <input
                 type="text"
                 value={searchInput}
-                onChange={(e) => handleSearchChange(e.target.value)}
+                onChange={(e) => setSearchInput(e.target.value)}
                 placeholder="Tìm theo ID, tên, email, SĐT..."
                 className="w-full sm:w-[280px] pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--admin-green-mid)] placeholder:text-gray-400"
               />
@@ -264,7 +262,7 @@ export default function AuthorityClient() {
           </div>
         ) : (
           <div ref={tableContainerRef} className="flex-1 overflow-y-auto">
-            {filteredUsers.length === 0 ? (
+            {users.length === 0 ? (
               <div className="flex items-center justify-center py-16 text-sm text-gray-400">
                 Không tìm thấy tài khoản
               </div>
@@ -276,7 +274,7 @@ export default function AuthorityClient() {
                 }}
               >
                 {rowVirtualizer.getVirtualItems().map((vRow) => {
-                  const user = filteredUsers[vRow.index];
+                  const user = users[vRow.index];
                   const role = (user.role ?? "USER") as UserRole;
                   const meta = ROLE_META[role];
                   const isSelf =

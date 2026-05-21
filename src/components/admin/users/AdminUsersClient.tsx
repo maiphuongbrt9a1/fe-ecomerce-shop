@@ -7,7 +7,6 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { Loader2, MessageCircle } from "lucide-react";
 import { userService, type UserDto } from "@/services/user";
 import { chatService } from "@/services/chat";
-import { toast } from "sonner";
 import UserDetailCard, { EmptyUserDetailCard } from "./UserDetailCard";
 
 // ── Constants ───────────────────────────────────────────────────────────────
@@ -46,92 +45,107 @@ export default function AdminUsersClient() {
   const accessToken = session?.user?.access_token || "";
   const router = useRouter();
 
-  // ── List state ──
-  const [users, setUsers]               = useState<UserDto[]>([]);
-  const [loading, setLoading]           = useState(true);
-  const [loadingMore, setLoadingMore]   = useState(false);
+  // ── List state (one BE-paginated window — no client-side preload) ──
+  const [users, setUsers]             = useState<UserDto[]>([]);
+  const [loading, setLoading]         = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore]         = useState(true);
+  const pageRef           = useRef(1);
+  const requestTokenRef   = useRef(0);
+  // Active search travels with whichever fetch is in flight. Using a ref
+  // (not the input value) keeps fetchMore aligned with the resetAndFetch
+  // that started the current set, even if the user keeps typing.
+  const activeSearchRef   = useRef("");
 
-  // ── Search (debounced, client-side filter on accumulated list) ──
-  const [searchInput, setSearchInput]   = useState("");
-  const [appliedSearch, setAppliedSearch] = useState("");
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // ── Search input (debounced → triggers BE-side reset) ──
+  const [searchInput, setSearchInput] = useState("");
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ── Selected user ──
+  // ── Selected user (persists across searches) ──
   const [selectedUser, setSelectedUser] = useState<UserDto | null>(null);
 
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
-  // ── Fetch all pages on mount ─────────────────────────────────────────────
+  // ── Reset to page 1 with a new search query ──────────────────────────────
+  const resetAndFetch = useCallback(async (search: string) => {
+    if (!accessToken) return;
+    const token = ++requestTokenRef.current;
+    activeSearchRef.current = search;
+    setLoading(true);
+    setLoadingMore(false);
+    setUsers([]);
+    pageRef.current = 1;
+    setHasMore(true);
+    try {
+      console.log("[AdminUsers] Reset fetch page 1, search:", search || "(empty)");
+      const res = await userService.getUsers(1, PER_PAGE, accessToken, search);
+      if (token !== requestTokenRef.current) return;
+      const data = Array.isArray(res?.data) ? res.data : [];
+      setUsers(data);
+      setHasMore(data.length > 0);
+    } catch (err) {
+      console.error("[AdminUsers] reset fetch error:", err);
+    } finally {
+      if (token === requestTokenRef.current) setLoading(false);
+    }
+  }, [accessToken]);
+
+  // ── Fetch next page (uses the search that started the current set) ───────
+  const fetchMore = useCallback(async () => {
+    if (!accessToken) return;
+    const token = requestTokenRef.current;
+    const nextPage = pageRef.current + 1;
+    setLoadingMore(true);
+    try {
+      console.log("[AdminUsers] Fetching more — page:", nextPage);
+      const res = await userService.getUsers(nextPage, PER_PAGE, accessToken, activeSearchRef.current);
+      if (token !== requestTokenRef.current) return;
+      const data = Array.isArray(res?.data) ? res.data : [];
+      if (data.length > 0) {
+        setUsers((prev) => [...prev, ...data]);
+        pageRef.current = nextPage;
+      } else {
+        setHasMore(false);
+      }
+    } catch (err) {
+      console.error("[AdminUsers] fetchMore error:", err);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [accessToken]);
+
+  // ── Initial fetch ────────────────────────────────────────────────────────
   useEffect(() => {
     if (!accessToken) return;
-    let cancelled = false;
-
-    (async () => {
-      setLoading(true);
-      setUsers([]);
-      const all: UserDto[] = [];
-      let page = 1;
-      try {
-        while (!cancelled) {
-          console.log("[AdminUsers] Fetching page:", page);
-          const res = await userService.getUsers(page, PER_PAGE, accessToken);
-          const data = Array.isArray(res?.data) ? res.data : [];
-          console.log("[AdminUsers] Page", page, "→ got", data.length, "items");
-          if (data.length === 0) break;
-          all.push(...data);
-          if (cancelled) return;
-          if (page === 1) {
-            setUsers(all.slice());
-            setLoading(false);
-            setLoadingMore(true);
-          } else {
-            setUsers(all.slice());
-          }
-          if (data.length < PER_PAGE) break;
-          page += 1;
-        }
-        if (!cancelled) console.log("[AdminUsers] Done. Total:", all.length);
-      } catch (err) {
-        console.error("[AdminUsers] Fetch error:", err);
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-          setLoadingMore(false);
-        }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [accessToken]);
+    resetAndFetch("");
+  }, [accessToken, resetAndFetch]);
 
   // ── Search ───────────────────────────────────────────────────────────────
   const handleSearchChange = (value: string) => {
     setSearchInput(value);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => setAppliedSearch(value), 300);
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    searchDebounceRef.current = setTimeout(() => { resetAndFetch(value); }, 300);
   };
-
-  const filteredUsers = appliedSearch.trim()
-    ? users.filter((u) => {
-        const q = appliedSearch.toLowerCase();
-        return (
-          `#${String(u.id).padStart(4, "0")}`.includes(q) ||
-          getDisplayName(u).toLowerCase().includes(q) ||
-          u.email.toLowerCase().includes(q) ||
-          (u.phone ?? "").includes(q)
-        );
-      })
-    : users;
 
   // ── Virtualizer ──────────────────────────────────────────────────────────
   const rowVirtualizer = useVirtualizer({
-    count: filteredUsers.length,
+    count: users.length,
     getScrollElement: () => tableContainerRef.current,
     estimateSize: () => ROW_HEIGHT,
     overscan: 10,
+    // Key by stable user id so refetch/reorder never applies stale measurements.
+    getItemKey: (index) => users[index]?.id ?? index,
   });
+
+  // ── Trigger fetchMore when the last few virtual items come into view ─────
+  const virtualItems = rowVirtualizer.getVirtualItems();
+  useEffect(() => {
+    const last = virtualItems[virtualItems.length - 1];
+    if (!last) return;
+    if (last.index >= users.length - 5 && hasMore && !loadingMore && !loading) {
+      fetchMore();
+    }
+  }, [virtualItems, users.length, hasMore, loadingMore, loading, fetchMore]);
 
   // ── Chat ─────────────────────────────────────────────────────────────────
   const handleOpenChat = async (e: React.MouseEvent, user: UserDto) => {
@@ -198,14 +212,14 @@ export default function AdminUsersClient() {
             </div>
           ) : (
             <div ref={tableContainerRef} className="flex-1 overflow-y-auto">
-              {filteredUsers.length === 0 ? (
+              {users.length === 0 ? (
                 <div className="flex items-center justify-center py-16 text-sm text-gray-400">
                   Không tìm thấy khách hàng
                 </div>
               ) : (
                 <div style={{ height: `${rowVirtualizer.getTotalSize()}px`, position: "relative" }}>
                   {rowVirtualizer.getVirtualItems().map((vRow) => {
-                    const user       = filteredUsers[vRow.index];
+                    const user       = users[vRow.index];
                     const statusCfg  = STATUS_CONFIG[getStatus(user)];
                     const isSelected = selectedUser?.id === user.id;
 

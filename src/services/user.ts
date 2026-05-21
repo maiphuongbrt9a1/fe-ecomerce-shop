@@ -74,13 +74,24 @@ export const userService = {
       headers: { Authorization: `Bearer ${accessToken}` },
     }),
 
-  getUsers: (page: number, perPage: number, accessToken: string) =>
-    sendRequest<IBackendRes<UserDto[]>>({
+  getUsers: (
+    page: number,
+    perPage: number,
+    accessToken: string,
+    search?: string,
+    role?: UserRole,
+  ) => {
+    const queryParams: Record<string, string | number> = { page, perPage };
+    const trimmed = search?.trim();
+    if (trimmed) queryParams.search = trimmed;
+    if (role) queryParams.role = role;
+    return sendRequest<IBackendRes<UserDto[]>>({
       url: `${BASE_URL}/user`,
       method: "GET",
-      queryParams: { page, perPage },
+      queryParams,
       headers: { Authorization: `Bearer ${accessToken}` },
-    }),
+    });
+  },
 
   getUser: (id: string, accessToken: string) =>
     sendRequest<IBackendRes<UserDto>>({
