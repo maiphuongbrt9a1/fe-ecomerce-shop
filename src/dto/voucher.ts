@@ -18,8 +18,15 @@ export interface VoucherTargetVariant {
 }
 
 export interface VoucherTargetUserVoucher {
+  id: number;
   userId: number;
   voucherStatus: "AVAILABLE" | "SAVED" | "USED" | "EXPIRED";
+  user?: {
+    firstName: string | null;
+    lastName: string | null;
+    username: string;
+    email: string;
+  };
 }
 
 export interface VoucherDto {
@@ -53,6 +60,10 @@ export interface CreateVoucherDto {
   timesUsed: number;
   isActive: boolean;
   createdBy: number;
+  categoryIds?: number[];
+  productIds?: number[];
+  variantIds?: number[];
+  userIds?: number[];
 }
 
 export interface SearchVoucherParams {
@@ -71,6 +82,10 @@ export interface UpdateVoucherDto {
   usageLimit?: number;
   timesUsed?: number;
   isActive?: boolean;
+  categoryIds?: number[];
+  productIds?: number[];
+  variantIds?: number[];
+  userIds?: number[];
 }
 
 export type VoucherTargetType = "none" | "category" | "product" | "variant" | "user";

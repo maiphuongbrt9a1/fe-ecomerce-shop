@@ -10,7 +10,7 @@ import { categoryService } from "@/services/category";
 import { productService } from "@/services/product";
 import { colorService } from "@/services/color";
 import { userService } from "@/services/user";
-import type { VoucherDto, CreateVoucherDto, DiscountType, SearchVoucherParams, VoucherTargetType } from "@/dto/voucher";
+import type { VoucherDto, CreateVoucherDto, DiscountType, SearchVoucherParams } from "@/dto/voucher";
 import type { CategoryDto } from "@/dto/category";
 import type { ProductDto } from "@/dto/product";
 import type { ColorEntity } from "@/dto/color";
@@ -50,7 +50,11 @@ function VoucherTargetCell({ voucher }: { voucher: VoucherDto }) {
   return <div className="flex flex-wrap gap-1">{parts}</div>;
 }
 
-const ROW_HEIGHT = 53;
+// Fixed row height — tall enough to fit the "Áp dụng cho" cell when it wraps
+// up to 4 count badges (≈22px each + cell padding). Keeping it fixed (instead
+// of measuring dynamically) means filtering/refetching never produces stale
+// per-index measurements, so rows never overlap or stack jagged.
+const ROW_HEIGHT = 120;
 const PER_PAGE = 10;
 const COLS_FULL = "48px 140px 1fr 180px 120px 100px 100px 100px 160px 96px";
 const COLS_READONLY = "48px 140px 1fr 180px 120px 100px 100px 100px 160px";
@@ -65,22 +69,47 @@ const toInputDate = (dateStr: string) => new Date(dateStr).toISOString().slice(0
 type DialogMode = "create" | "edit";
 
 interface FormState {
-  code: string; description: string; discountType: DiscountType; discountValue: string;
-  validFrom: string; validTo: string; usageLimit: string; isActive: boolean;
-  targetType: VoucherTargetType; targetCategoryId: number | null; targetProductId: number | null;
-  targetVariantId: number | null; targetVariantColorId: number | null; targetVariantSize: string;
-  targetUserIds: number[]; targetUserDisplayNames: string[];
-  targetProductName: string; targetVariantName: string; targetUserSearchQuery: string;
+  code: string;
+  description: string;
+  discountType: DiscountType;
+  discountValue: string;
+  validFrom: string;
+  validTo: string;
+  usageLimit: string;
+  isActive: boolean;
+  targetCategoryIds: number[];
+  targetProductIds: number[];
+  targetProductLabels: Record<number, string>;
+  targetVariantIds: number[];
+  targetVariantLabels: Record<number, string>;
+  targetUserIds: number[];
+  targetUserLabels: Record<number, string>;
+  productSearchQuery: string;
+  variantSearchQuery: string;
+  userSearchQuery: string;
 }
 
 interface FilterState { discountType: DiscountType | ""; isActive: "all" | "active" | "inactive"; }
 
 const emptyForm = (): FormState => ({
-  code: "", description: "", discountType: "FIXED_AMOUNT", discountValue: "",
-  validFrom: "", validTo: "", usageLimit: "", isActive: true,
-  targetType: "none", targetCategoryId: null, targetProductId: null,
-  targetVariantId: null, targetVariantColorId: null, targetVariantSize: "",
-  targetUserIds: [], targetUserDisplayNames: [], targetProductName: "", targetVariantName: "", targetUserSearchQuery: "",
+  code: "",
+  description: "",
+  discountType: "FIXED_AMOUNT",
+  discountValue: "",
+  validFrom: "",
+  validTo: "",
+  usageLimit: "",
+  isActive: true,
+  targetCategoryIds: [],
+  targetProductIds: [],
+  targetProductLabels: {},
+  targetVariantIds: [],
+  targetVariantLabels: {},
+  targetUserIds: [],
+  targetUserLabels: {},
+  productSearchQuery: "",
+  variantSearchQuery: "",
+  userSearchQuery: "",
 });
 
 const emptyFilter = (): FilterState => ({ discountType: "", isActive: "all" });
@@ -95,11 +124,6 @@ const filterToParams = (search: string, filter: FilterState): SearchVoucherParam
 };
 
 const hasActiveFilters = (filter: FilterState) => filter.discountType !== "" || filter.isActive !== "all";
-
-const TARGET_TYPE_LABELS: Record<VoucherTargetType, string> = {
-  none: "Không gán", category: "Danh mục", product: "Sản phẩm",
-  variant: "Phiên bản sản phẩm", user: "Người dùng",
-};
 
 interface CouponsClientProps { readonly?: boolean; }
 
@@ -123,22 +147,34 @@ export default function CouponsClient({ readonly = false }: CouponsClientProps) 
   const [form, setForm] = useState<FormState>(emptyForm());
   const [saving, setSaving] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
-  const [assignError, setAssignError] = useState<string | null>(null);
 
   const [categories, setCategories] = useState<CategoryDto[]>([]);
   const [colors, setColors] = useState<ColorEntity[]>([]);
   const [productResults, setProductResults] = useState<ProductDto[]>([]);
   const [variantResults, setVariantResults] = useState<{ id: number; variantName: string; productId: number; colorId: number; variantSize: string }[]>([]);
-  const [assignSearchLoading, setAssignSearchLoading] = useState(false);
-  const assignDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [productSearchLoading, setProductSearchLoading] = useState(false);
+  const [variantSearchLoading, setVariantSearchLoading] = useState(false);
+  const productDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const variantDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const [allUsers, setAllUsers] = useState<UserDto[]>([]);
-  const [usersLoading, setUsersLoading] = useState(false);
-  const [debouncedUserQuery, setDebouncedUserQuery] = useState("");
-  const userQueryDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const USER_PER_PAGE = 10;
+  // User picker: virtualized, infinite-scroll, BE-side search (no client preload).
+  const USER_PICKER_PAGE_SIZE = 20;
+  const [pickerUsers, setPickerUsers] = useState<UserDto[]>([]);
+  const [userPickerLoading, setUserPickerLoading] = useState(false);
+  const [userPickerLoadingMore, setUserPickerLoadingMore] = useState(false);
+  const [userPickerHasMore, setUserPickerHasMore] = useState(true);
+  const userPageRef = useRef(1);
+  const userRequestTokenRef = useRef(0);
+  const userSearchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const userListScrollRef = useRef<HTMLDivElement>(null);
 
   const tableContainerRef = useRef<HTMLDivElement>(null);
+
+  const colorById = useMemo(() => {
+    const m: Record<number, ColorEntity> = {};
+    colors.forEach((c) => { m[c.id] = c; });
+    return m;
+  }, [colors]);
 
   useEffect(() => {
     categoryService.getAllCategories().then((res) => { if (Array.isArray(res?.data)) setCategories(res.data); }).catch(() => {});
@@ -148,7 +184,11 @@ export default function CouponsClient({ readonly = false }: CouponsClientProps) 
   const fetchAllVouchers = useCallback(async () => {
     setLoading(true);
     setVouchers([]);
+    // Dedupe by voucher id while paginating — if the BE ever ties on its sort
+    // key, the same row can appear on two pages and duplicate React keys cause
+    // the rows to render on top of each other.
     const all: VoucherDto[] = [];
+    const seen = new Set<number>();
     let page = 1;
     try {
       while (true) {
@@ -156,7 +196,11 @@ export default function CouponsClient({ readonly = false }: CouponsClientProps) 
         const res = await voucherService.getAllVouchers(page, PER_PAGE);
         const data = Array.isArray(res.data) ? res.data : [];
         if (data.length === 0) break;
-        all.push(...data);
+        for (const v of data) {
+          if (seen.has(v.id)) continue;
+          seen.add(v.id);
+          all.push(v);
+        }
         if (page === 1) { setVouchers(all.slice()); setLoading(false); setLoadingMore(true); }
         else setVouchers(all.slice());
         if (data.length < PER_PAGE) break;
@@ -201,94 +245,196 @@ export default function CouponsClient({ readonly = false }: CouponsClientProps) 
     getScrollElement: () => tableContainerRef.current,
     estimateSize: () => ROW_HEIGHT,
     overscan: 10,
+    // Key measurements by the stable voucher id, not by array index. Without
+    // this, filtering or refetching shifts indices and stale heights from the
+    // previous ordering get applied to the new content (overlapping rows).
+    getItemKey: (index) => filteredVouchers[index]?.id ?? index,
   });
 
-  const handleAssignSearch = (query: string, targetType: VoucherTargetType) => {
-    if (assignDebounceRef.current) clearTimeout(assignDebounceRef.current);
-    if (!query.trim()) { setProductResults([]); setVariantResults([]); return; }
+  const runProductSearch = (query: string) => {
+    if (productDebounceRef.current) clearTimeout(productDebounceRef.current);
+    if (!query.trim()) { setProductResults([]); return; }
     const token = accessToken;
-    assignDebounceRef.current = setTimeout(async () => {
+    productDebounceRef.current = setTimeout(async () => {
       if (!token) return;
-      setAssignSearchLoading(true);
+      setProductSearchLoading(true);
       try {
         const res = await productService.getAllProducts({ page: 1, perPage: 20, accessToken: token });
         const products = Array.isArray(res?.data) ? res.data : [];
         const filtered = products.filter((p) => p.name.toLowerCase().includes(query.toLowerCase()));
-        if (targetType === "product") {
-          setProductResults(filtered.slice(0, 10));
-        } else {
-          const variants = filtered.flatMap((p) => (p.productVariants ?? []).map((v) => ({ id: v.id, variantName: v.variantName, productId: p.id, colorId: v.colorId, variantSize: v.variantSize })));
-          setVariantResults(variants.slice(0, 20));
-        }
-      } catch (err) { console.error("[CouponsClient] Assign search error:", err); }
-      finally { setAssignSearchLoading(false); }
+        setProductResults(filtered.slice(0, 10));
+      } catch (err) { console.error("[CouponsClient] Product search error:", err); }
+      finally { setProductSearchLoading(false); }
     }, 400);
   };
 
-  const filteredUsers = (() => {
-    const q = debouncedUserQuery.trim().toLowerCase();
-    return q ? allUsers.filter((u) => `#${u.id}`.includes(q) || [u.firstName, u.lastName, u.name, u.username].filter(Boolean).join(" ").toLowerCase().includes(q) || (u.email ?? "").toLowerCase().includes(q) || (u.phone ?? "").includes(q)) : allUsers;
-  })();
-
-  const fetchUsersForPicker = useCallback(async () => {
-    if (!accessToken) return;
-    setUsersLoading(true);
-    setAllUsers([]);
-    try {
-      const accumulated: UserDto[] = [];
-      let page = 1;
-      while (true) {
-        const res = await userService.getUsers(page, USER_PER_PAGE, accessToken);
-        const data = Array.isArray(res?.data) ? res.data : [];
-        accumulated.push(...data);
-        if (data.length < USER_PER_PAGE) break;
-        page++;
-      }
-      setAllUsers(accumulated);
-    } catch (err) { console.error("[CouponsClient] fetchUsersForPicker error:", err); setAllUsers([]); }
-    finally { setUsersLoading(false); }
-  }, [accessToken, USER_PER_PAGE]);
-
-  const handleTargetTypeChange = (t: VoucherTargetType) => {
-    setForm((f) => ({ ...f, targetType: t, targetCategoryId: null, targetProductId: null, targetVariantId: null, targetVariantColorId: null, targetVariantSize: "", targetUserIds: [], targetUserDisplayNames: [], targetProductName: "", targetVariantName: "", targetUserSearchQuery: "" }));
-    setProductResults([]); setVariantResults([]); setDebouncedUserQuery("");
-    if (t === "user") fetchUsersForPicker(); else setAllUsers([]);
+  const runVariantSearch = (query: string) => {
+    if (variantDebounceRef.current) clearTimeout(variantDebounceRef.current);
+    if (!query.trim()) { setVariantResults([]); return; }
+    const token = accessToken;
+    variantDebounceRef.current = setTimeout(async () => {
+      if (!token) return;
+      setVariantSearchLoading(true);
+      try {
+        const res = await productService.getAllProducts({ page: 1, perPage: 20, accessToken: token });
+        const products = Array.isArray(res?.data) ? res.data : [];
+        const filtered = products.filter((p) => p.name.toLowerCase().includes(query.toLowerCase()));
+        const variants = filtered.flatMap((p) => (p.productVariants ?? []).map((v) => ({ id: v.id, variantName: v.variantName, productId: p.id, colorId: v.colorId, variantSize: v.variantSize })));
+        setVariantResults(variants.slice(0, 20));
+      } catch (err) { console.error("[CouponsClient] Variant search error:", err); }
+      finally { setVariantSearchLoading(false); }
+    }, 400);
   };
 
-  const openCreate = () => { setDialogMode("create"); setEditingId(null); setForm(emptyForm()); setAssignError(null); setProductResults([]); setVariantResults([]); setAllUsers([]); setDialogOpen(true); };
-  const openEdit = (v: VoucherDto) => {
-    setDialogMode("edit"); setEditingId(v.id); setAssignError(null);
-    setForm({ code: v.code, description: v.description ?? "", discountType: v.discountType, discountValue: String(v.discountValue), validFrom: toInputDate(v.validFrom), validTo: toInputDate(v.validTo), usageLimit: v.usageLimit != null ? String(v.usageLimit) : "", isActive: v.isActive, targetType: "none", targetCategoryId: null, targetProductId: null, targetVariantId: null, targetVariantColorId: null, targetVariantSize: "", targetUserIds: [], targetUserDisplayNames: [], targetProductName: "", targetVariantName: "", targetUserSearchQuery: "" });
+  const resetUserPicker = useCallback(async (search: string) => {
+    if (!accessToken) return;
+    const token = ++userRequestTokenRef.current;
+    setUserPickerLoading(true);
+    setUserPickerLoadingMore(false);
+    setPickerUsers([]);
+    userPageRef.current = 1;
+    setUserPickerHasMore(true);
+    try {
+      const res = await userService.getUsers(1, USER_PICKER_PAGE_SIZE, accessToken, search);
+      if (token !== userRequestTokenRef.current) return;
+      const data = Array.isArray(res?.data) ? res.data : [];
+      setPickerUsers(data);
+      setUserPickerHasMore(data.length > 0);
+    } catch (err) {
+      console.error("[CouponsClient] resetUserPicker error:", err);
+    } finally {
+      if (token === userRequestTokenRef.current) setUserPickerLoading(false);
+    }
+  }, [accessToken]);
+
+  const fetchMoreUsers = useCallback(async (search: string) => {
+    if (!accessToken) return;
+    const token = userRequestTokenRef.current;
+    const nextPage = userPageRef.current + 1;
+    setUserPickerLoadingMore(true);
+    try {
+      const res = await userService.getUsers(nextPage, USER_PICKER_PAGE_SIZE, accessToken, search);
+      if (token !== userRequestTokenRef.current) return;
+      const data = Array.isArray(res?.data) ? res.data : [];
+      if (data.length > 0) {
+        setPickerUsers((prev) => [...prev, ...data]);
+        userPageRef.current = nextPage;
+      } else {
+        setUserPickerHasMore(false);
+      }
+    } catch (err) {
+      console.error("[CouponsClient] fetchMoreUsers error:", err);
+    } finally {
+      setUserPickerLoadingMore(false);
+    }
+  }, [accessToken]);
+
+  const userDisplayName = (u: UserDto): string =>
+    [u.lastName, u.firstName].filter(Boolean).join(" ") || u.name || u.username || `#${u.id}`;
+
+  const openCreate = () => {
+    setDialogMode("create");
+    setEditingId(null);
+    setForm(emptyForm());
+    setProductResults([]);
+    setVariantResults([]);
     setDialogOpen(true);
+    resetUserPicker("");
+  };
+
+  const openEdit = (v: VoucherDto) => {
+    setDialogMode("edit");
+    setEditingId(v.id);
+    const productLabels: Record<number, string> = {};
+    (v.voucherForProduct ?? []).forEach((p) => { productLabels[p.id] = p.name; });
+    const variantLabels: Record<number, string> = {};
+    (v.voucherForSpecialProductVariant ?? []).forEach((va) => {
+      const colorName = colorById[va.colorId]?.name;
+      const suffix = [va.variantSize, colorName].filter(Boolean).join(" · ");
+      variantLabels[va.id] = suffix ? `${va.variantName} (${suffix})` : va.variantName;
+    });
+    // Pre-fill user chip labels straight from the voucher payload — BE includes
+    // the joined user fields, so we don't need a follow-up lookup.
+    const userLabels: Record<number, string> = {};
+    (v.userVouchers ?? []).forEach((uv) => {
+      const u = uv.user;
+      const name = u
+        ? [u.lastName, u.firstName].filter(Boolean).join(" ") || u.username || u.email || `#${uv.userId}`
+        : `#${uv.userId}`;
+      userLabels[uv.userId] = name;
+    });
+    setForm({
+      code: v.code,
+      description: v.description ?? "",
+      discountType: v.discountType,
+      discountValue: String(v.discountValue),
+      validFrom: toInputDate(v.validFrom),
+      validTo: toInputDate(v.validTo),
+      usageLimit: v.usageLimit != null ? String(v.usageLimit) : "",
+      isActive: v.isActive,
+      targetCategoryIds: (v.voucherForCategory ?? []).map((c) => c.id),
+      targetProductIds: (v.voucherForProduct ?? []).map((p) => p.id),
+      targetProductLabels: productLabels,
+      targetVariantIds: (v.voucherForSpecialProductVariant ?? []).map((va) => va.id),
+      targetVariantLabels: variantLabels,
+      targetUserIds: (v.userVouchers ?? []).map((u) => u.userId),
+      targetUserLabels: userLabels,
+      productSearchQuery: "",
+      variantSearchQuery: "",
+      userSearchQuery: "",
+    });
+    setProductResults([]);
+    setVariantResults([]);
+    setDialogOpen(true);
+    resetUserPicker("");
   };
 
   const handleSave = async () => {
     if (!form.code.trim() || !form.discountValue || !form.validFrom || !form.validTo) { toast.error("Vui lòng điền đầy đủ thông tin bắt buộc."); return; }
     if (!session?.user?.id) return;
-    setSaving(true); setAssignError(null);
+    setSaving(true);
     try {
-      let voucherId: number | null = null;
       if (dialogMode === "create") {
-        const payload: CreateVoucherDto = { code: form.code.trim(), description: form.description.trim() || undefined, discountType: form.discountType, discountValue: parseFloat(form.discountValue), validFrom: new Date(form.validFrom).toISOString(), validTo: new Date(form.validTo).toISOString(), usageLimit: form.usageLimit ? parseInt(form.usageLimit) : undefined, timesUsed: 0, isActive: true, createdBy: parseInt(session.user.id) };
-        const res = await voucherService.createVoucher(payload, accessToken);
-        if (res.data) { voucherId = res.data.id; }
+        const payload: CreateVoucherDto = {
+          code: form.code.trim(),
+          description: form.description.trim() || undefined,
+          discountType: form.discountType,
+          discountValue: parseFloat(form.discountValue),
+          validFrom: new Date(form.validFrom).toISOString(),
+          validTo: new Date(form.validTo).toISOString(),
+          usageLimit: form.usageLimit ? parseInt(form.usageLimit) : undefined,
+          timesUsed: 0,
+          isActive: form.isActive,
+          createdBy: parseInt(session.user.id),
+          categoryIds: form.targetCategoryIds,
+          productIds: form.targetProductIds,
+          variantIds: form.targetVariantIds,
+          userIds: form.targetUserIds,
+        };
+        await voucherService.createVoucher(payload, accessToken);
       } else if (editingId !== null) {
-        const payload = { code: form.code.trim(), description: form.description.trim() || undefined, discountType: form.discountType, discountValue: parseFloat(form.discountValue), validFrom: new Date(form.validFrom).toISOString(), validTo: new Date(form.validTo).toISOString(), usageLimit: form.usageLimit ? parseInt(form.usageLimit) : undefined, isActive: form.isActive };
-        const res = await voucherService.updateVoucher(editingId, payload, accessToken);
-        if (res.data) setVouchers((prev) => prev.map((v) => (v.id === editingId ? res.data! : v)));
-      }
-      if (dialogMode === "create" && voucherId !== null && form.targetType !== "none") {
-        try {
-          if (form.targetType === "category" && form.targetCategoryId) await voucherService.assignToCategory(form.targetCategoryId, voucherId, accessToken);
-          else if (form.targetType === "product" && form.targetProductId) await voucherService.assignToProduct(form.targetProductId, voucherId, accessToken);
-          else if (form.targetType === "variant" && form.targetVariantId) await voucherService.assignToVariant(form.targetVariantId, voucherId, accessToken);
-          else if (form.targetType === "user" && form.targetUserIds.length > 0) { for (const uid of form.targetUserIds) await voucherService.assignToUser(uid, voucherId, accessToken); }
-        } catch (assignErr) { console.error("[CouponsClient] Assignment failed:", assignErr); setAssignError("Voucher đã được tạo nhưng gán thất bại."); setSaving(false); return; }
+        const payload = {
+          code: form.code.trim(),
+          description: form.description.trim() || undefined,
+          discountType: form.discountType,
+          discountValue: parseFloat(form.discountValue),
+          validFrom: new Date(form.validFrom).toISOString(),
+          validTo: new Date(form.validTo).toISOString(),
+          usageLimit: form.usageLimit ? parseInt(form.usageLimit) : undefined,
+          isActive: form.isActive,
+          categoryIds: form.targetCategoryIds,
+          productIds: form.targetProductIds,
+          variantIds: form.targetVariantIds,
+          userIds: form.targetUserIds,
+        };
+        await voucherService.updateVoucher(editingId, payload, accessToken);
       }
       setDialogOpen(false);
       fetchAllVouchers();
-    } catch (err) { console.error("[CouponsClient] Save error:", err); toast.error("Lưu voucher thất bại."); }
-    finally { setSaving(false); }
+    } catch (err) {
+      console.error("[CouponsClient] Save error:", err);
+      toast.error("Lưu voucher thất bại.");
+    } finally { setSaving(false); }
   };
 
   const handleDelete = async (id: number) => {
@@ -301,6 +447,92 @@ export default function CouponsClient({ readonly = false }: CouponsClientProps) 
 
   const activeFilterCount = (appliedFilter.discountType !== "" ? 1 : 0) + (appliedFilter.isActive !== "all" ? 1 : 0);
   const COLS = readonly ? COLS_READONLY : COLS_FULL;
+
+  // ----- chip + picker section helpers (kept inline; lightweight) -----
+  const Chip = ({ label, onRemove }: { label: string; onRemove: () => void }) => (
+    <span className="inline-flex items-center gap-1 bg-[var(--admin-green-light)] text-[var(--admin-green-dark)] text-xs px-2 py-1 rounded-md font-medium">
+      <span className="max-w-[14rem] truncate">{label}</span>
+      <button type="button" onClick={onRemove} className="cursor-pointer hover:text-red-500 ml-0.5"><X size={11} /></button>
+    </span>
+  );
+
+  const removeCategory = (id: number) =>
+    setForm((f) => ({ ...f, targetCategoryIds: f.targetCategoryIds.filter((x) => x !== id) }));
+  const addCategory = (id: number) =>
+    setForm((f) => (f.targetCategoryIds.includes(id) ? f : { ...f, targetCategoryIds: [...f.targetCategoryIds, id] }));
+
+  const removeProduct = (id: number) =>
+    setForm((f) => {
+      const { [id]: _drop, ...rest } = f.targetProductLabels;
+      void _drop;
+      return { ...f, targetProductIds: f.targetProductIds.filter((x) => x !== id), targetProductLabels: rest };
+    });
+  const addProduct = (p: ProductDto) =>
+    setForm((f) => (f.targetProductIds.includes(p.id)
+      ? f
+      : { ...f, targetProductIds: [...f.targetProductIds, p.id], targetProductLabels: { ...f.targetProductLabels, [p.id]: p.name }, productSearchQuery: "" }));
+
+  const removeVariant = (id: number) =>
+    setForm((f) => {
+      const { [id]: _drop, ...rest } = f.targetVariantLabels;
+      void _drop;
+      return { ...f, targetVariantIds: f.targetVariantIds.filter((x) => x !== id), targetVariantLabels: rest };
+    });
+  const addVariant = (v: { id: number; variantName: string; colorId: number; variantSize: string }) =>
+    setForm((f) => {
+      if (f.targetVariantIds.includes(v.id)) return f;
+      const colorName = colorById[v.colorId]?.name;
+      const suffix = [v.variantSize, colorName].filter(Boolean).join(" · ");
+      const label = suffix ? `${v.variantName} (${suffix})` : v.variantName;
+      return {
+        ...f,
+        targetVariantIds: [...f.targetVariantIds, v.id],
+        targetVariantLabels: { ...f.targetVariantLabels, [v.id]: label },
+        variantSearchQuery: "",
+      };
+    });
+
+  const removeUser = (id: number) =>
+    setForm((f) => {
+      const { [id]: _drop, ...rest } = f.targetUserLabels;
+      void _drop;
+      return { ...f, targetUserIds: f.targetUserIds.filter((x) => x !== id), targetUserLabels: rest };
+    });
+  const addUser = (u: UserDto) =>
+    setForm((f) => (f.targetUserIds.includes(u.id)
+      ? f
+      : { ...f, targetUserIds: [...f.targetUserIds, u.id], targetUserLabels: { ...f.targetUserLabels, [u.id]: userDisplayName(u) } }));
+
+  const availableCategories = categories.filter((c) => !form.targetCategoryIds.includes(c.id));
+
+  // User picker — virtualized list of fetched users with already-selected filtered out.
+  const visiblePickerUsers = useMemo(
+    () => pickerUsers.filter((u) => !form.targetUserIds.includes(u.id)),
+    [pickerUsers, form.targetUserIds],
+  );
+
+  const USER_ITEM_HEIGHT = 44;
+  const userVirtualizer = useVirtualizer({
+    count: visiblePickerUsers.length,
+    getScrollElement: () => userListScrollRef.current,
+    estimateSize: () => USER_ITEM_HEIGHT,
+    overscan: 8,
+  });
+
+  const userVirtualItems = userVirtualizer.getVirtualItems();
+  useEffect(() => {
+    if (!dialogOpen) return;
+    const last = userVirtualItems[userVirtualItems.length - 1];
+    if (!last) return;
+    if (
+      last.index >= visiblePickerUsers.length - 3 &&
+      userPickerHasMore &&
+      !userPickerLoadingMore &&
+      !userPickerLoading
+    ) {
+      fetchMoreUsers(form.userSearchQuery);
+    }
+  }, [userVirtualItems, visiblePickerUsers.length, userPickerHasMore, userPickerLoadingMore, userPickerLoading, fetchMoreUsers, form.userSearchQuery, dialogOpen]);
 
   return (
     <div className="h-full p-3 sm:p-4 md:p-6 flex flex-col">
@@ -415,7 +647,7 @@ export default function CouponsClient({ readonly = false }: CouponsClientProps) 
                 {rowVirtualizer.getVirtualItems().map((virtualRow) => {
                   const v = filteredVouchers[virtualRow.index];
                   return (
-                    <div key={v.id} data-index={virtualRow.index} ref={rowVirtualizer.measureElement} className="grid border-t border-gray-100 hover:bg-gray-50 items-center text-sm text-black" style={{ gridTemplateColumns: COLS, position: "absolute", top: 0, left: 0, width: "100%", transform: `translateY(${virtualRow.start}px)` }}>
+                    <div key={v.id} className="grid border-t border-gray-100 hover:bg-gray-50 items-center text-sm text-black" style={{ gridTemplateColumns: COLS, position: "absolute", top: 0, left: 0, width: "100%", height: ROW_HEIGHT, transform: `translateY(${virtualRow.start}px)` }}>
                       <div className="px-4 py-3 text-gray-500">{virtualRow.index + 1}</div>
                       <div className="px-4 py-3 font-mono font-semibold tracking-wide">{v.code}</div>
                       <div className="px-4 py-3 text-gray-600 truncate">{v.description ?? "—"}</div>
@@ -486,74 +718,167 @@ export default function CouponsClient({ readonly = false }: CouponsClientProps) 
                   <Label className="text-sm text-gray-600 cursor-pointer" onClick={() => setForm((f) => ({ ...f, isActive: !f.isActive }))}>{form.isActive ? "Còn hiệu lực" : "Hết hiệu lực"}</Label>
                 </div>
               )}
-              {dialogMode === "create" && (
-                <div className="border-t border-gray-100 pt-4 space-y-3">
-                  <p className="text-sm font-semibold text-gray-700">Gán voucher cho</p>
-                  <div>
-                    <Label className="text-sm text-gray-600">Áp dụng cho</Label>
-                    <Select value={form.targetType} onValueChange={(v) => handleTargetTypeChange(v as VoucherTargetType)}>
-                      <SelectTrigger className="mt-1 w-full cursor-pointer"><SelectValue /></SelectTrigger>
-                      <SelectContent>{(Object.keys(TARGET_TYPE_LABELS) as VoucherTargetType[]).map((t) => <SelectItem key={t} value={t}>{TARGET_TYPE_LABELS[t]}</SelectItem>)}</SelectContent>
-                    </Select>
-                  </div>
-                  {form.targetType === "category" && (
-                    <div>
-                      <Label className="text-sm text-gray-600">Chọn danh mục</Label>
-                      <Select value={form.targetCategoryId !== null ? String(form.targetCategoryId) : ""} onValueChange={(v) => setForm((f) => ({ ...f, targetCategoryId: Number(v) }))}>
-                        <SelectTrigger className="mt-1 w-full cursor-pointer"><SelectValue placeholder="Chọn danh mục..." /></SelectTrigger>
-                        <SelectContent>{categories.map((c) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}</SelectContent>
-                      </Select>
+
+              {/* Targets — 4 multi-select sections */}
+              <div className="border-t border-gray-100 pt-4 space-y-4">
+                <p className="text-sm font-semibold text-gray-700">Voucher áp dụng cho</p>
+
+                {/* Categories */}
+                <div>
+                  <Label className="text-sm text-gray-600">Danh mục</Label>
+                  {form.targetCategoryIds.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {form.targetCategoryIds.map((id) => {
+                        const c = categories.find((x) => x.id === id);
+                        return <Chip key={id} label={c?.name ?? `#${id}`} onRemove={() => removeCategory(id)} />;
+                      })}
                     </div>
                   )}
-                  {form.targetType === "product" && (
-                    <div>
-                      <Label className="text-sm text-gray-600">Tìm sản phẩm</Label>
-                      <div className="relative mt-1">
-                        <Input placeholder="Nhập tên sản phẩm..." value={form.targetProductName} onChange={(e) => { setForm((f) => ({ ...f, targetProductName: e.target.value, targetProductId: null })); handleAssignSearch(e.target.value, "product"); }} />
-                        {assignSearchLoading && <Loader2 size={14} className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-gray-400" />}
-                      </div>
-                      {form.targetProductId && <p className="text-xs text-[var(--admin-green-dark)] mt-1">Đã chọn: {form.targetProductName}</p>}
-                      {productResults.length > 0 && !form.targetProductId && (
-                        <div className="mt-1 border border-gray-200 rounded-md max-h-40 overflow-y-auto">
-                          {productResults.map((p) => <button key={p.id} type="button" onClick={() => { setForm((f) => ({ ...f, targetProductId: p.id, targetProductName: p.name })); setProductResults([]); }} className="w-full text-left px-3 py-2 text-sm hover:bg-[var(--admin-green-light)] cursor-pointer border-b border-gray-100 last:border-0"><span className="font-medium">{p.name}</span><span className="text-gray-400 text-xs ml-2">#{p.id}</span></button>)}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  {form.targetType === "user" && (
-                    <div>
-                      <Label className="text-sm text-gray-600">Tìm người dùng</Label>
-                      {form.targetUserIds.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5 mt-2 mb-2">
-                          {form.targetUserIds.map((uid, idx) => (
-                            <span key={uid} className="inline-flex items-center gap-1 bg-[var(--admin-green-light)] text-[var(--admin-green-dark)] text-xs px-2 py-1 rounded-md font-medium">
-                              {form.targetUserDisplayNames[idx] ?? `#${uid}`}
-                              <button type="button" onClick={() => setForm((f) => ({ ...f, targetUserIds: f.targetUserIds.filter((_, i) => i !== idx), targetUserDisplayNames: f.targetUserDisplayNames.filter((_, i) => i !== idx) }))} className="cursor-pointer hover:text-red-500 ml-0.5"><X size={11} /></button>
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                      <div className="relative mt-1">
-                        <Input placeholder="Tìm theo tên, email, số điện thoại..." value={form.targetUserSearchQuery} onChange={(e) => { const val = e.target.value; setForm((f) => ({ ...f, targetUserSearchQuery: val })); if (userQueryDebounceRef.current) clearTimeout(userQueryDebounceRef.current); userQueryDebounceRef.current = setTimeout(() => setDebouncedUserQuery(val), 300); }} />
-                        {usersLoading && <Loader2 size={14} className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-gray-400" />}
-                      </div>
-                      {!usersLoading && (
-                        <div className="mt-1 border border-gray-200 rounded-md max-h-48 overflow-y-auto">
-                          {filteredUsers.filter((u) => !form.targetUserIds.includes(u.id)).length === 0 ? (
-                            <p className="px-3 py-2 text-xs text-gray-400">Không tìm thấy người dùng</p>
-                          ) : (
-                            filteredUsers.filter((u) => !form.targetUserIds.includes(u.id)).map((u) => {
-                              const displayName = [u.lastName, u.firstName].filter(Boolean).join(" ") || u.name || u.username || `#${u.id}`;
-                              return <button key={u.id} type="button" onClick={() => setForm((f) => ({ ...f, targetUserIds: [...f.targetUserIds, u.id], targetUserDisplayNames: [...f.targetUserDisplayNames, displayName], targetUserSearchQuery: "" }))} className="w-full text-left px-3 py-2 text-sm hover:bg-[var(--admin-green-light)] cursor-pointer border-b border-gray-100 last:border-0 flex items-center gap-2"><span className="font-medium flex-1 truncate">{displayName}</span><span className="text-gray-400 text-xs shrink-0">{u.email}</span></button>;
-                            })
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  {assignError && <p className="text-xs text-red-500 bg-red-50 rounded p-2">{assignError}</p>}
+                  <Select value="" onValueChange={(v) => v && addCategory(Number(v))}>
+                    <SelectTrigger className="mt-2 w-full cursor-pointer">
+                      <SelectValue placeholder={availableCategories.length === 0 ? "Đã chọn tất cả danh mục" : "Thêm danh mục..."} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableCategories.map((c) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
                 </div>
-              )}
+
+                {/* Products */}
+                <div>
+                  <Label className="text-sm text-gray-600">Sản phẩm</Label>
+                  {form.targetProductIds.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {form.targetProductIds.map((id) => (
+                        <Chip key={id} label={form.targetProductLabels[id] ?? `#${id}`} onRemove={() => removeProduct(id)} />
+                      ))}
+                    </div>
+                  )}
+                  <div className="relative mt-2">
+                    <Input
+                      placeholder="Tìm sản phẩm theo tên..."
+                      value={form.productSearchQuery}
+                      onChange={(e) => { const val = e.target.value; setForm((f) => ({ ...f, productSearchQuery: val })); runProductSearch(val); }}
+                    />
+                    {productSearchLoading && <Loader2 size={14} className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-gray-400" />}
+                  </div>
+                  {productResults.length > 0 && (
+                    <div className="mt-1 border border-gray-200 rounded-md max-h-40 overflow-y-auto">
+                      {productResults
+                        .filter((p) => !form.targetProductIds.includes(p.id))
+                        .map((p) => (
+                          <button key={p.id} type="button" onClick={() => addProduct(p)} className="w-full text-left px-3 py-2 text-sm hover:bg-[var(--admin-green-light)] cursor-pointer border-b border-gray-100 last:border-0">
+                            <span className="font-medium">{p.name}</span>
+                            <span className="text-gray-400 text-xs ml-2">#{p.id}</span>
+                          </button>
+                        ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Variants */}
+                <div>
+                  <Label className="text-sm text-gray-600">Phiên bản sản phẩm</Label>
+                  {form.targetVariantIds.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {form.targetVariantIds.map((id) => (
+                        <Chip key={id} label={form.targetVariantLabels[id] ?? `#${id}`} onRemove={() => removeVariant(id)} />
+                      ))}
+                    </div>
+                  )}
+                  <div className="relative mt-2">
+                    <Input
+                      placeholder="Tìm phiên bản theo tên sản phẩm..."
+                      value={form.variantSearchQuery}
+                      onChange={(e) => { const val = e.target.value; setForm((f) => ({ ...f, variantSearchQuery: val })); runVariantSearch(val); }}
+                    />
+                    {variantSearchLoading && <Loader2 size={14} className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-gray-400" />}
+                  </div>
+                  {variantResults.length > 0 && (
+                    <div className="mt-1 border border-gray-200 rounded-md max-h-48 overflow-y-auto">
+                      {variantResults
+                        .filter((v) => !form.targetVariantIds.includes(v.id))
+                        .map((v) => {
+                          const colorName = colorById[v.colorId]?.name;
+                          const suffix = [v.variantSize, colorName].filter(Boolean).join(" · ");
+                          return (
+                            <button key={v.id} type="button" onClick={() => addVariant(v)} className="w-full text-left px-3 py-2 text-sm hover:bg-[var(--admin-green-light)] cursor-pointer border-b border-gray-100 last:border-0">
+                              <span className="font-medium">{v.variantName}</span>
+                              {suffix && <span className="text-gray-500 text-xs ml-2">{suffix}</span>}
+                              <span className="text-gray-400 text-xs ml-2">#{v.id}</span>
+                            </button>
+                          );
+                        })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Users */}
+                <div>
+                  <Label className="text-sm text-gray-600">Người dùng</Label>
+                  {form.targetUserIds.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {form.targetUserIds.map((id) => (
+                        <Chip key={id} label={form.targetUserLabels[id] ?? `#${id}`} onRemove={() => removeUser(id)} />
+                      ))}
+                    </div>
+                  )}
+                  <div className="relative mt-2">
+                    <Input
+                      placeholder="Tìm theo tên, email, số điện thoại..."
+                      value={form.userSearchQuery}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setForm((f) => ({ ...f, userSearchQuery: val }));
+                        if (userSearchDebounceRef.current) clearTimeout(userSearchDebounceRef.current);
+                        userSearchDebounceRef.current = setTimeout(() => { resetUserPicker(val); }, 300);
+                      }}
+                    />
+                    {userPickerLoading && <Loader2 size={14} className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-gray-400" />}
+                  </div>
+                  <div
+                    ref={userListScrollRef}
+                    className="mt-1 border border-gray-200 rounded-md overflow-y-auto"
+                    style={{ height: 240 }}
+                  >
+                    {userPickerLoading && pickerUsers.length === 0 ? (
+                      <div className="flex items-center justify-center py-6 text-gray-400 text-xs gap-2">
+                        <Loader2 size={14} className="animate-spin" />Đang tải...
+                      </div>
+                    ) : visiblePickerUsers.length === 0 ? (
+                      <p className="px-3 py-3 text-xs text-gray-400">
+                        {pickerUsers.length === 0 ? "Không tìm thấy người dùng" : "Đã chọn tất cả người dùng phù hợp"}
+                      </p>
+                    ) : (
+                      <>
+                        <div style={{ height: userVirtualizer.getTotalSize(), position: "relative", width: "100%" }}>
+                          {userVirtualItems.map((vi) => {
+                            const u = visiblePickerUsers[vi.index];
+                            if (!u) return null;
+                            return (
+                              <button
+                                key={u.id}
+                                type="button"
+                                onClick={() => addUser(u)}
+                                className="text-left px-3 py-2 text-sm hover:bg-[var(--admin-green-light)] cursor-pointer border-b border-gray-100 last:border-0 flex items-center gap-2"
+                                style={{ position: "absolute", top: 0, left: 0, width: "100%", height: USER_ITEM_HEIGHT, transform: `translateY(${vi.start}px)` }}
+                              >
+                                <span className="font-medium flex-1 truncate">{userDisplayName(u)}</span>
+                                <span className="text-gray-400 text-xs shrink-0">{u.email}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                        {userPickerLoadingMore && (
+                          <div className="flex items-center justify-center py-2 text-gray-400 text-xs gap-2">
+                            <Loader2 size={14} className="animate-spin" />Đang tải thêm...
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setDialogOpen(false)} className="cursor-pointer">Hủy</Button>
