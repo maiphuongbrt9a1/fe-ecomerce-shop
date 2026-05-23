@@ -374,28 +374,37 @@ function CheckoutContent() {
   const priceSummary = (() => {
     if (!packages) return null;
 
-    let subTotal = 0;
+    // The BE returns three layered totals per package:
+    //   item.subTotalPrice           = unitPrice * quantity (pre-discount)
+    //   item.totalPrice              = subTotalPrice - totalDiscountAmount (post item voucher)
+    //   subTotalPriceForPackage      = Σ item.totalPrice  ← already net of item discounts
+    //   totalPriceForPackage         = subTotalForPackage + shipping - userVoucher
+    //
+    // For the bill to add up readably ("subtotal − discounts + shipping = total")
+    // Tạm tính must be the PRE-discount sum. Using subTotalPriceForPackage here
+    // would make the item-discount line look like a double-subtraction.
+    let subTotal = 0;                  // pre-discount sum (Σ item.subTotalPrice)
     let totalShippingFee = 0;
-    let totalItemDiscount = 0;
-    let totalPackageDiscount = 0;
+    let totalItemDiscount = 0;         // Σ item.totalDiscountAmount (variant-level vouchers)
+    let totalPackageDiscount = 0;      // Σ specialUserDiscountAmountForPackage (user-saved vouchers)
     const allItems: PackageItemDetailDto[] = [];
 
     for (const pkg of Object.values(packages)) {
       const detail = pkg.PackageDetail;
-      subTotal += detail.subTotalPriceForPackage;
       totalShippingFee += detail.shippingFee;
       totalPackageDiscount += detail.specialUserDiscountAmountForPackage;
       allItems.push(...detail.packageItems);
 
       for (const item of detail.packageItems) {
+        subTotal += item.subTotalPrice;
         totalItemDiscount += item.totalDiscountAmount;
       }
     }
 
     const totalDiscount = totalItemDiscount + totalPackageDiscount;
-    // subTotalPriceForPackage is already net of item-level discounts, and
-    // totalPriceForPackage is the BE-authoritative order total. Sum that directly
-    // instead of re-deriving — otherwise item discounts get subtracted twice.
+    // totalPriceForPackage is the BE-authoritative order total. Sum that
+    // directly — never re-derive on the FE since rounding/voucher rules live
+    // on the BE.
     const totalAmount = Object.values(packages).reduce(
       (sum, pkg) => sum + pkg.PackageDetail.totalPriceForPackage,
       0,
@@ -850,7 +859,7 @@ function CheckoutContent() {
                 {priceSummary ? (
                   <>
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Tạm tính</span>
+                      <span className="text-gray-600">Giá gốc</span>
                       <span>{VND.format(priceSummary.subTotal)}</span>
                     </div>
                     <div className="flex justify-between">
@@ -885,7 +894,7 @@ function CheckoutContent() {
                 ) : (
                   <>
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Tạm tính</span>
+                      <span className="text-gray-600">Giá gốc</span>
                       <span>
                         {VND.format(
                           items.reduce(
